@@ -28,6 +28,8 @@
   import { CustomCanvas } from "$/fabric-object/custom_canvas";
   import { FileUtils } from "$/utils/file_utils";
   import AppModal from "$/components/basic/AppModal.svelte";
+  import { printScale } from "$/utils/label_units";
+  import { normalizeTurns, unrotateCanvas } from "$/utils/label_orientation";
 
   interface Props {
     labelProps: LabelProps;
@@ -229,6 +231,14 @@
       previewContext.putImageData(iData, Math.max(offset.x, 0), Math.max(offset.y, 0));
     }
 
+    if (normalizeTurns(labelProps.quarterTurns) !== 0) {
+      const turned = unrotateCanvas(previewCanvas, labelProps.quarterTurns);
+      previewCanvas.width = turned.width;
+      previewCanvas.height = turned.height;
+      previewContext = previewCanvas.getContext("2d")!;
+      previewContext.drawImage(turned, 0, 0);
+    }
+
     if ($printerMeta !== undefined) {
       const headSize = labelProps.printDirection == "left" ? previewCanvas.height : previewCanvas.width;
       if (headSize > $printerMeta.printheadPixels) {
@@ -308,6 +318,25 @@
     generatePreviewData(currentPage);
   };
 
+  const scaleForPrinter = (source: HTMLCanvasElement, scale: number): HTMLCanvasElement => {
+    if (Math.abs(scale - 1) < 0.001) {
+      return source;
+    }
+    const scaled = document.createElement("canvas");
+    scaled.width = Math.max(1, Math.round(source.width * scale));
+    scaled.height = Math.max(1, Math.round(source.height * scale));
+    const ctx = scaled.getContext("2d");
+    if (ctx === null) {
+      return source;
+    }
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, scaled.width, scaled.height);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(source, 0, 0, scaled.width, scaled.height);
+    return scaled;
+  };
+
   const generatePreviewData = async (page: number): Promise<void> => {
     const fabricTempCanvas = new CustomCanvas(undefined, {
       width: labelProps.size.width,
@@ -339,7 +368,7 @@
 
     fabricTempCanvas.requestRenderAll();
 
-    const preRenderedCanvas = fabricTempCanvas.toCanvasElement();
+    const preRenderedCanvas = scaleForPrinter(fabricTempCanvas.toCanvasElement(), printScale($printerMeta?.dpi));
     const ctx = preRenderedCanvas.getContext("2d")!;
     previewCanvas.width = preRenderedCanvas.width;
     previewCanvas.height = preRenderedCanvas.height;

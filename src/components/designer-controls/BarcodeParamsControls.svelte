@@ -1,7 +1,6 @@
 <script lang="ts">
   import { Barcode } from "$/fabric-object/barcode";
   import { tr } from "$/utils/i18n";
-  import MdIcon from "$/components/basic/MdIcon.svelte";
 
   interface Props {
     selectedBarcode: Barcode;
@@ -14,10 +13,11 @@
 
 <input type="hidden" value={editRevision}>
 
-<div class="input-group input-group-sm flex-nowrap">
-  <span class="input-group-text" title={$tr("params.barcode.encoding")}><MdIcon icon="code" /></span>
+<div class="field">
+  <label class="field-label" for="barcode-encoding">{$tr("params.barcode.encoding")}</label>
   <select
-    class="form-select"
+    id="barcode-encoding"
+    class="form-select form-select-sm"
     value={selectedBarcode.encoding}
     onchange={(e) => {
       selectedBarcode?.set("encoding", e.currentTarget.value ?? "EAN13");
@@ -28,12 +28,11 @@
   </select>
 </div>
 
-<div class="input-group input-group-sm flex-nowrap">
-  <span class="input-group-text" title={$tr("params.barcode.scale")}>
-    <MdIcon icon="settings_ethernet" />
-  </span>
+<div class="field">
+  <label class="field-label" for="barcode-scale">{$tr("params.barcode.scale")}</label>
   <input
-    class="barcode-width form-control"
+    id="barcode-scale"
+    class="form-control form-control-sm"
     type="number"
     min="1"
     value={selectedBarcode.scaleFactor}
@@ -44,21 +43,21 @@
 </div>
 
 <button
-  class="btn btn-sm {selectedBarcode.printText ? 'btn-secondary' : ''}"
-  title={$tr("params.barcode.enable_caption")}
+  class="btn btn-sm btn-outline-secondary align-self-start"
+  class:active={selectedBarcode.printText}
+  type="button"
   onclick={() => {
     selectedBarcode?.set("printText", !selectedBarcode.printText);
     valueUpdated();
   }}>
-  123
+  {$tr("params.barcode.enable_caption")}
 </button>
 
-<div class="input-group input-group-sm flex-nowrap">
-  <span class="input-group-text" title={$tr("params.barcode.font_size")}>
-    <MdIcon icon="format_size" />
-  </span>
+<div class="field">
+  <label class="field-label" for="barcode-font-size">{$tr("params.barcode.font_size")}</label>
   <input
-    class="barcode-width form-control"
+    id="barcode-font-size"
+    class="form-control form-control-sm"
     type="number"
     min="1"
     value={selectedBarcode.fontSize}
@@ -68,25 +67,20 @@
     }} />
 </div>
 
-<textarea
-  class="barcode-content form-control"
-  value={selectedBarcode.text}
-  oninput={(e) => {
-    selectedBarcode?.set("text", e.currentTarget.value);
-    valueUpdated();
-  }}></textarea>
-
+<div class="field">
+  <label class="field-label" for="barcode-content">{$tr("params.barcode.content")}</label>
+  <textarea
+    id="barcode-content"
+    class="barcode-content form-control form-control-sm"
+    value={selectedBarcode.text}
+    oninput={(e) => {
+      selectedBarcode?.set("text", e.currentTarget.value);
+      valueUpdated();
+    }}></textarea>
+</div>
 
 <style>
-  .input-group {
-    width: fit-content;
-  }
-
   textarea.barcode-content {
-    height: 100px;
-  }
-
-  input.barcode-width {
-    max-width: 64px;
+    height: 6rem;
   }
 </style>

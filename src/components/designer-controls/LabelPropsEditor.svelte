@@ -20,14 +20,17 @@
   import { Toasts } from "$/utils/toasts";
   import { FileUtils } from "$/utils/file_utils";
   import { z } from "zod";
-  import DpiSelector from "$/components/designer-controls/DpiSelector.svelte";
+  import { formatMm, formatMmValue, mmToPx, normalizeLabelPresets, pxToEditableMm, pxToMm } from "$/utils/label_units";
+  import { normalizeTurns, swapIfOdd } from "$/utils/label_orientation";
 
   interface Props {
     labelProps: LabelProps;
     onChange: (newProps: LabelProps) => void;
+    onRotate?: () => void;
+    embedded?: boolean;
   }
 
-  let { labelProps, onChange }: Props = $props();
+  let { labelProps, onChange, onRotate, embedded = false }: Props = $props();
 
   const tailPositions: TailPosition[] = ["right", "bottom", "left", "top"];
   const printDirections: PrintDirection[] = ["left", "top"];
@@ -40,7 +43,6 @@
   let title = $state<string | undefined>("");
   let prevUnit: LabelUnit = "mm";
   let unit = $state<LabelUnit>("mm");
-  let dpmm = $state<number>(8);
   let width = $state<number>(0);
   let height = $state<number>(0);
   let printDirection = $state<PrintDirection>("left");
@@ -54,11 +56,14 @@
   let error = $derived.by<string>(() => {
     let error = "";
 
-    const headSize = labelProps.printDirection == "left" ? labelProps.size.height : labelProps.size.width;
     if ($printerMeta !== undefined) {
-      if (headSize > $printerMeta.printheadPixels) {
+      const physical = swapIfOdd(labelProps.size.width, labelProps.size.height, labelProps.quarterTurns);
+      const headPx = labelProps.printDirection == "left" ? physical.height : physical.width;
+      const headMm = pxToMm(headPx);
+      const maxMm = pxToMm($printerMeta.printheadPixels, $printerMeta.dpi);
+      if (headMm > maxMm + 0.05) {
         error += $tr("params.label.warning.width") + " ";
-        error += `(${headSize} > ${$printerMeta.printheadPixels})`;
+        error += `(${formatMm(headPx)} > ${formatMmValue(maxMm)} ${$tr("params.label.mm")})`;
         error += "\n";
       }
 
@@ -72,56 +77,43 @@
       }
     }
 
-    if (headSize % 8 !== 0) {
-      error += $tr("params.label.warning.div8");
-    }
-
     return error;
   });
 
-  const onApply = () => {
-    let newWidth = width;
-    let newHeight = height;
-    let newTailLength = tailLength;
+  const toDesignPx = (value: number): number => {
+    return unit === "mm" ? mmToPx(value) : Math.max(1, Math.round(value));
+  };
 
-    // mm to px
-    if (unit === "mm") {
-      newWidth *= dpmm;
-      newHeight *= dpmm;
-      newTailLength *= dpmm;
+  const toDesignLength = (value: number): number => {
+    if (value <= 0) {
+      return 0;
     }
+    return unit === "mm" ? mmToPx(value) : Math.round(value);
+  };
 
-    // limit min size
-    newWidth = newWidth < dpmm ? dpmm : newWidth;
-    newHeight = newHeight < dpmm ? dpmm : newHeight;
-
-    // width must me multiple of 8
-    if (printDirection === "left") {
-      newHeight -= newHeight % 8;
-    } else {
-      newWidth -= newWidth % 8;
-    }
-
+  const applyWith = (quarterTurns: number | undefined) => {
     onChange({
       printDirection: printDirection,
       size: {
-        width: Math.floor(newWidth),
-        height: Math.floor(newHeight),
+        width: toDesignPx(width),
+        height: toDesignPx(height),
       },
       shape,
-      split,
+      split: shape === "circle" ? "none" : split,
       splitParts,
       tailPos,
-      tailLength: Math.floor(newTailLength),
+      tailLength: toDesignLength(tailLength),
       mirror,
+      quarterTurns: normalizeTurns(quarterTurns),
     });
   };
+
+  const onApply = () => applyWith(labelProps.quarterTurns);
 
   const onLabelPresetSelected = (index: number) => {
     const preset = labelPresets[index];
 
     if (preset !== undefined) {
-      dpmm = preset.dpmm;
       prevUnit = preset.unit;
       unit = preset.unit;
       printDirection = preset.printDirection;
@@ -136,7 +128,7 @@
       mirror = preset.mirror ?? "none";
     }
 
-    onApply();
+    applyWith(0);
   };
 
   const onLabelPresetDelete = (idx: number) => {
@@ -148,7 +140,6 @@
 
   const onLabelPresetAdd = () => {
     const newPreset: LabelPreset = {
-      dpmm,
       printDirection,
       unit,
       width,
@@ -171,37 +162,41 @@
   };
 
   const onFlip = () => {
-    let widthTmp = width;
+    const widthTmp = width;
     width = height;
     height = widthTmp;
-    printDirection = printDirection === "top" ? "left" : "top";
   };
 
   const onUnitChange = () => {
     if (prevUnit === "mm" && unit === "px") {
-      width = Math.floor(width * dpmm);
-      height = Math.floor(height * dpmm);
-      tailLength = Math.floor(tailLength * dpmm);
+      width = mmToPx(width);
+      height = mmToPx(height);
+      tailLength = tailLength <= 0 ? 0 : mmToPx(tailLength);
     } else if (prevUnit === "px" && unit === "mm") {
-      width = Math.floor(width / dpmm);
-      height = Math.floor(height / dpmm);
-      tailLength = Math.floor(tailLength / dpmm);
+      width = pxToEditableMm(width);
+      height = pxToEditableMm(height);
+      tailLength = tailLength <= 0 ? 0 : pxToEditableMm(tailLength);
     }
     prevUnit = unit;
   };
 
   const fillWithCurrentParams = () => {
-    prevUnit = "px";
-    width = labelProps.size.width;
-    height = labelProps.size.height;
     printDirection = labelProps.printDirection;
     shape = labelProps.shape ?? "rect";
     split = labelProps.split ?? "none";
     splitParts = labelProps.splitParts ?? 2;
     tailPos = labelProps.tailPos ?? "right";
-    tailLength = labelProps.tailLength ?? 0;
     mirror = labelProps.mirror ?? "none";
-    onUnitChange();
+    if (unit === "mm") {
+      width = pxToEditableMm(labelProps.size.width);
+      height = pxToEditableMm(labelProps.size.height);
+      tailLength = pxToEditableMm(labelProps.tailLength ?? 0);
+    } else {
+      width = labelProps.size.width;
+      height = labelProps.size.height;
+      tailLength = labelProps.tailLength ?? 0;
+    }
+    prevUnit = unit;
   };
 
   const onImportClicked = async () => {
@@ -213,7 +208,7 @@
     }
 
     try {
-      const presets = z.array(LabelPresetSchema).parse(rawData);
+      const presets = normalizeLabelPresets(z.array(LabelPresetSchema).parse(rawData));
       LocalStoragePersistence.saveLabelPresets(presets);
       labelPresets = presets;
     } catch (e) {
@@ -245,13 +240,49 @@
     try {
       const savedPresets: LabelPreset[] | null = LocalStoragePersistence.loadLabelPresets();
       if (savedPresets !== null) {
-        labelPresets = savedPresets;
+        const normalized = normalizeLabelPresets(savedPresets);
+        labelPresets = normalized;
+        const signature = (items: LabelPreset[]) =>
+          JSON.stringify(
+            items.map((p) => ({
+              width: p.width,
+              height: p.height,
+              unit: p.unit,
+              printDirection: p.printDirection,
+              title: p.title ?? "",
+              shape: p.shape ?? "rect",
+              split: p.split ?? "none",
+              splitParts: p.splitParts ?? 2,
+              tailPos: p.tailPos ?? "right",
+              tailLength: p.tailLength ?? 0,
+              mirror: p.mirror ?? "none",
+            })),
+          );
+        const storedDensity = savedPresets.some(
+          (p) => p.dpmm !== undefined || (p.title !== undefined && /\d+\s*dpi/i.test(p.title)),
+        );
+        if (storedDensity || signature(savedPresets) !== signature(normalized)) {
+          LocalStoragePersistence.saveLabelPresets(normalized);
+        }
       }
     } catch (e) {
       Toasts.zodErrors(e, "Presets load error:");
     }
 
     tick().then(() => fillWithCurrentParams());
+  });
+
+  $effect(() => {
+    labelProps.printDirection;
+    labelProps.size.width;
+    labelProps.size.height;
+    labelProps.shape;
+    labelProps.split;
+    labelProps.splitParts;
+    labelProps.tailPos;
+    labelProps.tailLength;
+    labelProps.mirror;
+    fillWithCurrentParams();
   });
 
   $effect(() => {
@@ -267,12 +298,16 @@
   });
 </script>
 
-<div class="dropdown">
-  <button class="btn btn-sm btn-secondary" data-bs-toggle="dropdown" data-bs-auto-close="outside">
-    <MdIcon icon="settings" />
-  </button>
-  <div class="dropdown-menu">
-    <h6 class="dropdown-header">{$tr("params.label.menu_title")}</h6>
+<div class="label-props" class:dropdown={!embedded} class:embedded>
+  {#if !embedded}
+    <button class="btn btn-sm btn-secondary" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside">
+      <MdIcon icon="settings" />
+    </button>
+  {/if}
+  <div class={embedded ? "label-props-body" : "dropdown-menu"}>
+    {#if !embedded}
+      <h6 class="dropdown-header">{$tr("params.label.menu_title")}</h6>
+    {/if}
 
     <div class="px-3">
       <div class="p-1">
@@ -287,8 +322,8 @@
       </div>
       <div class="mb-3 {error ? 'cursor-help text-warning' : 'text-secondary'}" title={error}>
         {$tr("params.label.current")}
-        {labelProps.size.width}x{labelProps.size.height}
-        {$tr("params.label.px")}
+        {formatMm(labelProps.size.width)} × {formatMm(labelProps.size.height)}
+        {$tr("params.label.mm")}
         {#if labelProps.printDirection === "top"}
           ({$tr("params.label.direction")} {$tr("params.label.direction.top")})
         {:else if labelProps.printDirection === "left"}
@@ -305,17 +340,31 @@
 
       <div class="input-group flex-nowrap input-group-sm mb-2">
         <span class="input-group-text">{$tr("params.label.size")}</span>
-        <input class="form-control" type="number" min="1" step={unit === "px" ? 8 : 1} bind:value={width} />
-        <button class="btn btn-sm btn-secondary" onclick={onFlip}><MdIcon icon="swap_horiz" /></button>
-        <input class="form-control" type="number" min="1" step={unit === "px" ? 8 : 1} bind:value={height} />
+        <input class="form-control" type="number" min="1" step={unit === "px" ? 1 : 0.1} bind:value={width} />
+        <button class="btn btn-sm btn-secondary" type="button" onclick={onFlip}>
+          <MdIcon icon="swap_horiz" />
+        </button>
+        <input class="form-control" type="number" min="1" step={unit === "px" ? 1 : 0.1} bind:value={height} />
         <select class="form-select" bind:value={unit} onchange={onUnitChange}>
           <option value="mm"> {$tr("params.label.mm")}</option>
           <option value="px"> {$tr("params.label.px")}</option>
         </select>
       </div>
 
-      {#if unit !== "px"}
-        <DpiSelector bind:value={dpmm} />
+      {#if onRotate}
+      <button
+        class="btn btn-sm btn-outline-secondary w-100 mb-2"
+        type="button"
+        onclick={onRotate}
+        title={$tr("shell.rotate_hint")}>
+        <MdIcon icon="rotate_right" />
+        {$tr("shell.rotate")}
+        {#if labelProps.size.width > labelProps.size.height}
+          · {$tr("params.label.landscape")}
+        {:else if labelProps.size.height > labelProps.size.width}
+          · {$tr("params.label.portrait")}
+        {/if}
+      </button>
       {/if}
 
       <div class="input-group flex-nowrap input-group-sm print-dir-switch mb-2" role="group">
@@ -345,7 +394,8 @@
             id="label-shape-{v}"
             autocomplete="off"
             bind:group={shape}
-            value={v} />
+            value={v}
+            onchange={onApply} />
           <label class="btn btn-outline-secondary px-3" for="label-shape-{v}">
             <div class="svg-icon"></div>
           </label>
@@ -444,14 +494,28 @@
     max-width: 450px;
   }
 
+  .label-props.embedded,
+  .label-props.embedded .label-props-body {
+    width: 100%;
+  }
+
+  .embedded :global(.input-group) {
+    max-width: 100%;
+  }
+
   .cursor-help {
     cursor: help;
   }
 
   .svg-icon {
-    height: 1.5em;
-    width: 1.5em;
+    height: 1.7em;
+    width: 1.7em;
+    background-color: #2a2622;
+    background-repeat: no-repeat;
+    background-position: center;
     background-size: cover;
+    border-radius: 3px;
+    box-shadow: 0 0 0 2px #f6f3ec;
   }
 
   .tail-pos-switch .svg-icon {

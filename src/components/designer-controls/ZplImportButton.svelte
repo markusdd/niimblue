@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { LabelProps } from "$/types";
+  import { pxToMm } from "$/utils/label_units";
   import { FileUtils } from "$/utils/file_utils";
   import MdIcon from "$/components/basic/MdIcon.svelte";
   import { tr } from "$/utils/i18n";
@@ -15,9 +16,10 @@
 
   const onImportClicked = async () => {
     const mmToInchCoeff = 25.4;
-    const dpmm = 8; // todo: may vary, make it configurable
-    const widthInches = labelProps.size.width / dpmm / mmToInchCoeff;
-    const heightInches = labelProps.size.height / dpmm / mmToInchCoeff;
+    // Labelary's nearest density to the editor raster. The inch size is the physical label.
+    const dpmm = 12;
+    const widthInches = pxToMm(labelProps.size.width) / mmToInchCoeff;
+    const heightInches = pxToMm(labelProps.size.height) / mmToInchCoeff;
 
     const contents = await FileUtils.pickAndReadSingleTextFile("zpl");
 

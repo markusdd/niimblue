@@ -59,6 +59,13 @@
     valueUpdated();
   };
 
+  // Fabric writes fontFamily onto the object. The revision is what tells the
+  // field to read that name again.
+  const shownFontFamily = $derived.by(() => {
+    editRevision;
+    return selectedText.fontFamily ?? "";
+  });
+
   const fontSizeUp = () => {
     let s = selectedText.fontSize;
     selectedText.set({ fontSize: Math.min(s > 40 ? Math.round(s * 1.1) : s + 2, sizeMax) });
@@ -115,175 +122,173 @@
 <!-- Fix component not updating when selectedText changes. I didn't find a better way to do this. -->
 <input type="hidden" value={editRevision}>
 
-<button
-  title={$tr("params.text.align.left")}
-  class="btn btn-sm {selectedText.textAlign === 'left' ? 'btn-secondary' : ''}"
-  onclick={() => setXAlign("left")}><MdIcon icon="format_align_left" /></button>
-<button
-  title={$tr("params.text.align.center")}
-  class="btn btn-sm {selectedText.textAlign === 'center' ? 'btn-secondary' : ''}"
-  onclick={() => setXAlign("center")}><MdIcon icon="format_align_center" /></button>
-<button
-  title={$tr("params.text.align.right")}
-  class="btn btn-sm {selectedText.textAlign === 'right' ? 'btn-secondary' : ''}"
-  onclick={() => setXAlign("right")}><MdIcon icon="format_align_right" /></button>
-<div class="dropdown">
-  <button class="btn btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" title={$tr("params.text.vorigin")}>
-    {#if selectedText.originY === "top"}
-      <MdIcon icon="vertical_align_top" />
-    {:else if selectedText.originY === "center"}
-      <MdIcon icon="vertical_align_center" />
-    {:else if selectedText.originY === "bottom"}
-      <MdIcon icon="vertical_align_bottom" />
+<div class="field">
+  <span class="field-label">{$tr("shell.align")}</span>
+  <div class="choice-row">
+    <button
+      type="button"
+      title={$tr("params.text.align.left")}
+      class="btn btn-sm btn-outline-secondary"
+      class:active={selectedText.textAlign === "left"}
+      onclick={() => setXAlign("left")}>
+      <MdIcon icon="format_align_left" />
+      {$tr("shell.align.left")}
+    </button>
+    <button
+      type="button"
+      title={$tr("params.text.align.center")}
+      class="btn btn-sm btn-outline-secondary"
+      class:active={selectedText.textAlign === "center"}
+      onclick={() => setXAlign("center")}>
+      <MdIcon icon="format_align_center" />
+      {$tr("shell.align.center")}
+    </button>
+    <button
+      type="button"
+      title={$tr("params.text.align.right")}
+      class="btn btn-sm btn-outline-secondary"
+      class:active={selectedText.textAlign === "right"}
+      onclick={() => setXAlign("right")}>
+      <MdIcon icon="format_align_right" />
+      {$tr("shell.align.right")}
+    </button>
+  </div>
+</div>
+
+<div class="field">
+  <span class="field-label">{$tr("params.text.vorigin")}</span>
+  <div class="choice-row">
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary"
+      class:active={selectedText.originY === "top"}
+      onclick={() => setYAlign("top")}>
+      {$tr("params.text.vorigin.top")}
+    </button>
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary"
+      class:active={selectedText.originY === "center"}
+      onclick={() => setYAlign("center")}>
+      {$tr("params.text.vorigin.center")}
+    </button>
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary"
+      class:active={selectedText.originY === "bottom"}
+      onclick={() => setYAlign("bottom")}>
+      {$tr("params.text.vorigin.bottom")}
+    </button>
+  </div>
+</div>
+
+<div class="field">
+  <span class="field-label">{$tr("params.text.bold")}</span>
+  <div class="choice-row">
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary"
+      class:active={selectedText.fontWeight === "bold"}
+      onclick={toggleBold}>
+      {$tr("params.text.bold")}
+    </button>
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary"
+      class:active={selectedText.fontStyle === "italic"}
+      onclick={toggleItalic}>
+      {$tr("params.text.italic")}
+    </button>
+    {#if selectedText instanceof TextboxExt}
+      <button
+        type="button"
+        class="btn btn-sm btn-outline-secondary"
+        class:active={selectedText.fontAutoSize}
+        data-ver={editRevision}
+        onclick={toggleFontAutoSize}>
+        {$tr("params.text.autosize")}
+      </button>
     {/if}
-  </button>
-  <div class="dropdown-menu p-2">
-    <button
-      class="btn btn-sm {selectedText.originY === 'top' ? 'btn-secondary' : ''}"
-      onclick={() => setYAlign("top")}
-      title={$tr("params.text.vorigin.top")}>
-      <MdIcon icon="vertical_align_top" />
+  </div>
+</div>
+
+<div class="field">
+  <label class="field-label" for="text-font-size">{$tr("params.text.font_size")}</label>
+  <div class="input-group input-group-sm">
+    <input
+      id="text-font-size"
+      type="number"
+      min={sizeMin}
+      max={sizeMax}
+      step="2"
+      class="form-control"
+      value={selectedText.fontSize}
+      oninput={(e) => fontSizeChange(e.currentTarget.valueAsNumber)} />
+    <button class="btn btn-outline-secondary" type="button" title={$tr("params.text.font_size.up")} onclick={fontSizeUp}>
+      <MdIcon icon="text_increase" />
     </button>
-    <button
-      class="btn btn-sm {selectedText.originY === 'center' ? 'btn-secondary' : ''}"
-      onclick={() => setYAlign("center")}
-      title={$tr("params.text.vorigin.center")}>
-      <MdIcon icon="vertical_align_center" />
-    </button>
-    <button
-      class="btn btn-sm {selectedText.originY === 'bottom' ? 'btn-secondary' : ''}"
-      onclick={() => setYAlign("bottom")}
-      title={$tr("params.text.vorigin.bottom")}>
-      <MdIcon icon="vertical_align_bottom" />
+    <button class="btn btn-outline-secondary" type="button" title={$tr("params.text.font_size.down")} onclick={fontSizeDown}>
+      <MdIcon icon="text_decrease" />
     </button>
   </div>
 </div>
 
-<button
-  class="btn btn-sm {selectedText.fontWeight === 'bold' ? 'btn-secondary' : ''}"
-  title={$tr("params.text.bold")}
-  onclick={toggleBold}>
-  <MdIcon icon="format_bold" />
-</button>
-
-<button
-  class="btn btn-sm {selectedText.fontStyle === 'italic' ? 'btn-secondary' : ''}"
-  title={$tr("params.text.italic")}
-  onclick={toggleItalic}>
-  <MdIcon icon="format_italic" />
-</button>
-
-<div class="dropdown">
-  <button class="btn btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" title={$tr("params.color")}>
-    <MdIcon icon="format_color_fill" />
-  </button>
-
-  <div class="dropdown-menu arrangement p-2">
-    <div class="input-group input-group-sm flex-nowrap color pb-2">
-      <span class="input-group-text">
-        <MdIcon icon="format_color_text" />
-      </span>
-      <select class="form-select" value={selectedText.fill} onchange={(e) => fillChanged(e.currentTarget.value)}>
-        <option value="white">{$tr("params.color.white")}</option>
-        <option value="black">{$tr("params.color.black")}</option>
-        <option value="red">{$tr("params.color.red")}</option>
-      </select>
-    </div>
-    <div class="input-group input-group-sm flex-nowrap color pb-2">
-      <span class="input-group-text">
-        <MdIcon icon="format_color_fill" />
-      </span>
-      <select
-        class="form-select"
-        value={selectedText.backgroundColor || "transparent"}
-        onchange={(e) => backgroundColorChanged(e.currentTarget.value)}>
-        <option value="white">{$tr("params.color.white")}</option>
-        <option value="black">{$tr("params.color.black")}</option>
-        <option value="red">{$tr("params.color.red")}</option>
-        <option value="transparent">{$tr("params.color.transparent")}</option>
-      </select>
-    </div>
-  </div>
-</div>
-
-{#if selectedText instanceof fabric.Textbox}
-  <div class="dropdown">
-    <button class="btn btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" title={$tr("params.params.text.split")}>
-      <MdIcon icon="wrap_text" />
-    </button>
-
-    <div class="dropdown-menu arrangement p-2">
-      <div class="input-group input-group-sm flex-nowrap split pb-2">
-        <select class="form-select" value={selectedText.splitByGrapheme ? "grapheme" : "space"} onchange={(e) => splitChanged(e.currentTarget.value)}>
-          <option value="space">{$tr("params.params.text.split.spaces")}</option>
-          <option value="grapheme">{$tr("params.params.text.split.grapheme")}</option>
-        </select>
-      </div>
-    </div>
-  </div>
-{/if}
-
-{#if selectedText instanceof TextboxExt}
-  <!-- fixme: Custom property not auto-rendered for some reason -->
-  <button
-    class="btn btn-sm {selectedText.fontAutoSize ? 'btn-secondary' : ''}"
-    title={$tr("params.text.autosize")}
-    data-ver={editRevision}
-    onclick={toggleFontAutoSize}>
-    <MdIcon icon="expand" class="r-90" />
-  </button>
-{/if}
-
-
-<div class="input-group flex-nowrap input-group-sm font-size">
-  <span class="input-group-text" title={$tr("params.text.font_size")}><MdIcon icon="format_size" /></span>
+<div class="field">
+  <label class="field-label" for="text-line-height">{$tr("params.text.line_height")}</label>
   <input
-    type="number"
-    min={sizeMin}
-    max={sizeMax}
-    step="2"
-    class="form-control"
-    value={selectedText.fontSize}
-    oninput={(e) => fontSizeChange(e.currentTarget.valueAsNumber)} />
-  <button class="btn btn-secondary" title={$tr("params.text.font_size.up")} onclick={fontSizeUp}>
-    <MdIcon icon="text_increase" />
-  </button>
-  <button class="btn btn-secondary" title={$tr("params.text.font_size.down")} onclick={fontSizeDown}>
-    <MdIcon icon="text_decrease" />
-  </button>
-</div>
-
-<div class="input-group flex-nowrap input-group-sm">
-  <span class="input-group-text" title={$tr("params.text.line_height")}>
-    <MdIcon icon="density_medium" />
-  </span>
-  <input
+    id="text-line-height"
     type="number"
     min="0.1"
     step="0.1"
     max="10"
-    class="form-control"
+    class="form-control form-control-sm"
     value={selectedText.lineHeight}
     oninput={(e) => lineHeightChange(e.currentTarget.valueAsNumber)} />
 </div>
 
-<FontFamilyPicker {editRevision} value={selectedText.fontFamily} valueUpdated={updateFontFamily} />
+<div class="field">
+  <span class="field-label">{$tr("params.text.font_family")}</span>
+  <FontFamilyPicker {editRevision} value={shownFontFamily} valueUpdated={updateFontFamily} />
+</div>
 
-<button class="btn btn-sm btn-secondary" onclick={editInPopup} title={$tr("params.text.edit")}>
+<div class="field">
+  <label class="field-label" for="text-fill">{$tr("shell.text.color")}</label>
+  <select id="text-fill" class="form-select form-select-sm" value={selectedText.fill} onchange={(e) => fillChanged(e.currentTarget.value)}>
+    <option value="white">{$tr("params.color.white")}</option>
+    <option value="black">{$tr("params.color.black")}</option>
+    <option value="red">{$tr("params.color.red")}</option>
+  </select>
+</div>
+
+<div class="field">
+  <label class="field-label" for="text-background">{$tr("shell.text.background")}</label>
+  <select
+    id="text-background"
+    class="form-select form-select-sm"
+    value={selectedText.backgroundColor || "transparent"}
+    onchange={(e) => backgroundColorChanged(e.currentTarget.value)}>
+    <option value="white">{$tr("params.color.white")}</option>
+    <option value="black">{$tr("params.color.black")}</option>
+    <option value="red">{$tr("params.color.red")}</option>
+    <option value="transparent">{$tr("params.color.transparent")}</option>
+  </select>
+</div>
+
+{#if selectedText instanceof fabric.Textbox}
+  <div class="field">
+    <label class="field-label" for="text-split">{$tr("params.params.text.split")}</label>
+    <select
+      id="text-split"
+      class="form-select form-select-sm"
+      value={selectedText.splitByGrapheme ? "grapheme" : "space"}
+      onchange={(e) => splitChanged(e.currentTarget.value)}>
+      <option value="space">{$tr("params.params.text.split.spaces")}</option>
+      <option value="grapheme">{$tr("params.params.text.split.grapheme")}</option>
+    </select>
+  </div>
+{/if}
+
+<button class="btn btn-sm btn-outline-secondary align-self-start" type="button" onclick={editInPopup}>
   <MdIcon icon="edit" />
+  {$tr("params.text.edit")}
 </button>
-
-<style>
-  .input-group {
-    width: 7em;
-  }
-  .font-size {
-    width: 12em;
-  }
-  .input-group.color {
-    width: 12em;
-  }
-  .input-group.split {
-    width: 14em;
-  }
-</style>

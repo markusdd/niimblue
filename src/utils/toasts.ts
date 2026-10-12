@@ -2,22 +2,22 @@ import Toastify from "toastify-js";
 import { z } from "zod";
 
 export class Toasts {
-  static error(e: any) {
+  static error(e: any, duration = 5000) {
     console.error(e);
 
     Toastify({
       text: `${e}`,
       gravity: "bottom",
-      duration: 5000,
+      duration,
       className: "toast-danger",
     }).showToast();
   }
 
-  static message(text: string) {
+  static message(text: string, duration = 5000) {
     Toastify({
       text,
       gravity: "bottom",
-      duration: 5000,
+      duration,
       className: "toast-info",
     }).showToast();
   }

@@ -13,6 +13,7 @@
 @import "bootstrap/scss/alert";
 @import "bootstrap/scss/transitions";
 @import "font";
+@import "shell";
 
 body {
   font-family: "Noto Sans Variable", sans-serif;
@@ -22,6 +23,8 @@ body {
   background: var(--bs-danger-bg-subtle);
   border: 1px solid var(--bs-danger-border-subtle);
   color: var(--bs-danger-text-emphasis);
+  max-width: min(36rem, calc(100vw - 2rem));
+  white-space: normal;
 }
 
 .toastify.toast-info {

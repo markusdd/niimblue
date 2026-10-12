@@ -1,6 +1,7 @@
 import * as fabric from "fabric";
 import type { AppConfig, LabelPreset, LabelProps } from "$/types";
 import { TextboxExt } from "$/fabric-object/textbox-ext";
+import { mmToPx } from "$/utils/label_units";
 
 export const configureFabric = () => {
   fabric.config.disableStyleCopyPaste = true;
@@ -26,22 +27,19 @@ export const configureFabric = () => {
   });
 };
 
-/** Default presets for LabelPropsEditor */
+/** Default presets for LabelPropsEditor. Sizes are millimetres, not a printer density. */
 export const DEFAULT_LABEL_PRESETS: LabelPreset[] = [
-  // 203dpi
-  { width: 40, height: 12, unit: "mm", dpmm: 8, printDirection: "left", shape: "rect" },
-  { width: 50, height: 30, unit: "mm", dpmm: 8, printDirection: "top", shape: "rect" },
-  // 300dpi
-  { width: 40, height: 12, unit: "mm", dpmm: 11.81, printDirection: "left", shape: "rect", title: "40x12mm 300dpi" },
-  { width: 50, height: 30, unit: "mm", dpmm: 11.81, printDirection: "top", shape: "rect", title: "50x30mm 300dpi" },
+  { width: 40, height: 12, unit: "mm", printDirection: "left", shape: "rect" },
+  { width: 50, height: 30, unit: "mm", printDirection: "top", shape: "rect" },
 ];
 
-/** Default canvas dimensions */
+/** Default canvas. 40×12 mm at the editor's fixed design raster. */
 export const DEFAULT_LABEL_PROPS: LabelProps = {
   printDirection: "left",
+  shape: "rect",
   size: {
-    width: 240,
-    height: 96,
+    width: mmToPx(40),
+    height: mmToPx(12),
   },
 };
 

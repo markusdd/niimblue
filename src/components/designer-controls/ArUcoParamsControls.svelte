@@ -1,6 +1,5 @@
 <script lang="ts">
   import { ArUcoMarker, type ArUcoDictionary } from "$/fabric-object/aruco";
-  import MdIcon from "$/components/basic/MdIcon.svelte";
   import { tr } from "$/utils/i18n";
 
   interface Props {
@@ -22,12 +21,11 @@
 
 <input type="hidden" value={editRevision}>
 
-<div class="input-group input-group-sm flex-nowrap">
-  <span class="input-group-text" title={$tr("params.aruco.dict")}>
-    <MdIcon icon="grid_on" />
-  </span>
+<div class="field">
+  <label class="field-label" for="aruco-dict">{$tr("params.aruco.dict")}</label>
   <select
-    class="form-select"
+    id="aruco-dict"
+    class="form-select form-select-sm"
     value={selectedArUco.dictionary}
     onchange={(e) => {
       selectedArUco?.set("dictionary", e.currentTarget.value);
@@ -43,13 +41,12 @@
   </select>
 </div>
 
-<div class="input-group input-group-sm flex-nowrap">
-  <span class="input-group-text" title={$tr("params.aruco.marker_id")}>
-    <MdIcon icon="tag" />
-  </span>
+<div class="field">
+  <label class="field-label" for="aruco-id">{$tr("params.aruco.marker_id")}</label>
   <input
+    id="aruco-id"
     type="number"
-    class="form-control"
+    class="form-control form-control-sm"
     min="0"
     max={maxId}
     value={selectedArUco.markerId}
@@ -61,9 +58,3 @@
       }
     }} />
 </div>
-
-<style>
-  .input-group {
-    width: fit-content;
-  }
-</style>

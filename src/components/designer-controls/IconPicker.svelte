@@ -10,9 +10,10 @@
   interface Props {
     onSubmit: (i: MaterialIcon) => void;
     onSubmitSvg: (i: string) => void;
+    embedded?: boolean;
   }
 
-  let { onSubmit, onSubmitSvg }: Props = $props();
+  let { onSubmit, onSubmitSvg, embedded = false }: Props = $props();
 
   let iconNames = $state<MaterialIcon[]>([]);
   let search = $state<string>("");
@@ -58,6 +59,10 @@
   };
 
   onMount(() => {
+    if (embedded) {
+      onShow();
+      return;
+    }
     dropdown?.addEventListener("show.bs.dropdown", onShow);
   });
 
@@ -66,14 +71,18 @@
   });
 </script>
 
-<div class="dropdown" bind:this={dropdown}>
-  <button class="btn btn-sm btn-secondary" data-bs-toggle="dropdown" data-bs-auto-close="outside">
-    <MdIcon icon="emoji_emotions" />
-    <MdIcon icon="add" />
-  </button>
+<div class="icon-picker" class:dropdown={!embedded} bind:this={dropdown}>
+  {#if !embedded}
+    <button class="btn btn-sm btn-secondary" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside">
+      <MdIcon icon="emoji_emotions" />
+      <MdIcon icon="add" />
+    </button>
+  {/if}
 
-  <div class="dropdown-menu">
-    <h6 class="dropdown-header">{$tr("editor.iconpicker.title")}</h6>
+  <div class={embedded ? "icon-picker-body" : "dropdown-menu"}>
+    {#if !embedded}
+      <h6 class="dropdown-header">{$tr("editor.iconpicker.title")}</h6>
+    {/if}
     <div class="p-3">
       <input
         disabled={$appConfig.iconListMode === "user"}
@@ -141,6 +150,9 @@
   .dropdown-menu {
     width: 100vw;
     max-width: 450px;
+  }
+  .icon-picker-body {
+    width: 100%;
   }
   .icons {
     max-height: 400px;

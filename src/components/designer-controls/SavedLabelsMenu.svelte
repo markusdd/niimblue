@@ -16,9 +16,10 @@
     onLoadRequested: (label: ExportedLabelTemplate) => void;
     canvas: fabric.Canvas;
     csvEnabled: boolean;
+    labeled?: boolean;
   }
 
-  let { onRequestLabelTemplate, onLoadRequested, canvas, csvEnabled }: Props = $props();
+  let { onRequestLabelTemplate, onLoadRequested, canvas, csvEnabled, labeled = false }: Props = $props();
 
   let dropdownRef: HTMLDivElement;
   let savedLabels = $state<ExportedLabelTemplate[]>([]);
@@ -202,8 +203,14 @@
 </script>
 
 <div class="dropdown">
-  <button class="btn btn-sm btn-secondary" data-bs-toggle="dropdown" data-bs-auto-close="outside">
+  <button
+    class={labeled ? "tool-btn" : "btn btn-sm btn-secondary"}
+    type="button"
+    data-bs-toggle="dropdown"
+    data-bs-auto-close="outside"
+    title={$tr("shell.library")}>
     <MdIcon icon="sd_storage" />
+    {#if labeled}<span>{$tr("shell.library")}</span>{/if}
   </button>
   <div class="saved-labels dropdown-menu" bind:this={dropdownRef}>
     <h6 class="dropdown-header text-wrap">

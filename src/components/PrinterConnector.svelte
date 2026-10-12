@@ -21,6 +21,7 @@
   import type { ConnectionType } from "$/types";
   import { tr, type TranslationKey } from "$/utils/i18n";
   import MdIcon from "$/components/basic/MdIcon.svelte";
+  import { BluetoothLinkDropped } from "$/utils/bluetooth_connect";
   import { Toasts } from "$/utils/toasts";
   import { onMount } from "svelte";
   import { LocalStoragePersistence } from "$/utils/persistence";
@@ -40,7 +41,34 @@
     return Math.min(Math.max(usage, 0), 100);
   };
 
+  const bluetoothMissingMessage = (): string => {
+    const ua = navigator.userAgent;
+    if (/firefox/i.test(ua)) {
+      return $tr("connector.bluetooth_unavailable.firefox");
+    }
+    if ("brave" in navigator) {
+      return $tr("connector.bluetooth_unavailable.brave");
+    }
+    return $tr("connector.bluetooth_unavailable.chromium");
+  };
+
+  const explainMissingBluetooth = () => {
+    Toasts.error(bluetoothMissingMessage(), 14000);
+  };
+
+  const onBluetoothClicked = () => {
+    switchConnectionType("bluetooth");
+    if (!featureSupport.webBluetooth) {
+      explainMissingBluetooth();
+    }
+  };
+
   const onConnectClicked = async () => {
+    if (connectionType === "bluetooth" && !featureSupport.webBluetooth) {
+      explainMissingBluetooth();
+      return;
+    }
+
     initClient(connectionType);
     connectionState.set("connecting");
 
@@ -52,6 +80,12 @@
       }
     } catch (e) {
       connectionState.set("disconnected");
+      const linkDropped =
+        e instanceof BluetoothLinkDropped || (e instanceof Error && e.name === "BluetoothLinkDropped");
+      if (linkDropped) {
+        Toasts.error($tr("connector.bluetooth_link_dropped"), 14000);
+        return;
+      }
       Toasts.error(e);
     }
   };
@@ -266,15 +300,14 @@
       ></MdIcon>
     </span>
   {:else}
-    {#if featureSupport.webBluetooth}
-      <button
-        disabled={$connectionState === "connecting"}
-        class="btn text-nowrap {connectionType === 'bluetooth' ? 'btn-light' : 'btn-outline-secondary'}"
-        onclick={() => switchConnectionType("bluetooth")}>
-        <MdIcon icon="bluetooth" />
-        {$tr("connector.bluetooth")}
-      </button>
-    {/if}
+    <button
+      disabled={$connectionState === "connecting"}
+      class="btn text-nowrap {connectionType === 'bluetooth' ? 'btn-light' : 'btn-outline-secondary'}"
+      title={!featureSupport.webBluetooth ? bluetoothMissingMessage() : undefined}
+      onclick={onBluetoothClicked}>
+      <MdIcon icon="bluetooth" />
+      {$tr("connector.bluetooth")}
+    </button>
     {#if featureSupport.webSerial}
       <button
         disabled={$connectionState === "connecting"}

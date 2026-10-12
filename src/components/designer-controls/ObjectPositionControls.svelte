@@ -1,5 +1,4 @@
 <script lang="ts">
-  import MdIcon from "$/components/basic/MdIcon.svelte";
   import { tr } from "$/utils/i18n";
   import * as fabric from "fabric";
   import { onDestroy } from "svelte";
@@ -23,10 +22,10 @@
 
   const objectDimensionsChanged = (e?: fabric.ModifiedEvent) => {
     const pos = selectedObject.getPointByOrigin("left", "top");
-    x = pos.x;
-    y = pos.y;
-    width = selectedObject.width;
-    height = selectedObject.height;
+    x = Math.round(pos.x);
+    y = Math.round(pos.y);
+    width = Math.round(selectedObject.width);
+    height = Math.round(selectedObject.height);
 
     updateScales(e?.action);
   };
@@ -95,57 +94,40 @@
   });
 </script>
 
-<div class="dropdown">
-  <button
-    class="btn btn-sm btn-secondary dropdown-toggle"
-    type="button"
-    data-bs-toggle="dropdown"
-    title={$tr("params.generic.position")}>
-    <MdIcon icon="control_camera" />
-  </button>
-  <div class="dropdown-menu arrangement p-2">
-    <div class="input-group flex-nowrap input-group-sm mb-2">
-      <span class="input-group-text">x</span>
-      <input class="form-control" type="number" bind:value={x} onchange={updateObject} />
-    </div>
-    <div class="input-group flex-nowrap input-group-sm mb-2">
-      <span class="input-group-text">y</span>
-      <input class="form-control" type="number" bind:value={y} onchange={updateObject} />
-    </div>
-    {#if !(selectedObject instanceof fabric.FabricText || selectedObject instanceof fabric.FabricImage || selectedObject instanceof QRCode || selectedObject instanceof Barcode)}
-      <div class="input-group flex-nowrap input-group-sm mb-2">
-        <input class="form-control" type="number" min="1" bind:value={width} onchange={updateObject} />
-        <span class="input-group-text">x</span>
-        <input class="form-control" type="number" min="1" bind:value={height} onchange={updateObject} />
-      </div>
-    {/if}
-    {#if selectedObject instanceof fabric.FabricImage}
-      <div class="input-group flex-nowrap input-group-sm mb-2">
-        <input
-          class="form-control"
-          type="number"
-          min="1"
-          bind:value={widthScaled}
-          onchange={(e) => updateObject(e, "width")} />
-        <span class="input-group-text">x</span>
-        <input
-          class="form-control"
-          type="number"
-          min="1"
-          bind:value={heightScaled}
-          onchange={(e) => updateObject(e, "height")} />
-      </div>
-      <div class="form-check form-switch">
-        <input
-          class="form-check-input"
-          type="checkbox"
-          role="switch"
-          id="keepImageAspectRatio"
-          bind:checked={keepAspectRatio}
-          onchange={toggleAspectRatio} />
-        <label class="form-check-label" for="keepImageAspectRatio" style="text-wrap: nowrap">
-          {$tr("params.generic.keepAspectRatio")}</label>
-      </div>
-    {/if}
+<div class="field">
+  <span class="field-label">{$tr("params.generic.position")}</span>
+  <div class="input-group input-group-sm">
+    <span class="input-group-text">{$tr("shell.pos.x")}</span>
+    <input class="form-control" type="number" bind:value={x} onchange={updateObject} />
+    <span class="input-group-text">{$tr("shell.pos.y")}</span>
+    <input class="form-control" type="number" bind:value={y} onchange={updateObject} />
   </div>
+  {#if !(selectedObject instanceof fabric.FabricText || selectedObject instanceof fabric.FabricImage || selectedObject instanceof QRCode || selectedObject instanceof Barcode)}
+    <div class="input-group input-group-sm">
+      <span class="input-group-text">{$tr("shell.pos.w")}</span>
+      <input class="form-control" type="number" min="1" bind:value={width} onchange={updateObject} />
+      <span class="input-group-text">{$tr("shell.pos.h")}</span>
+      <input class="form-control" type="number" min="1" bind:value={height} onchange={updateObject} />
+    </div>
+  {/if}
+  {#if selectedObject instanceof fabric.FabricImage}
+    <div class="input-group input-group-sm">
+      <span class="input-group-text">{$tr("shell.pos.w")}</span>
+      <input class="form-control" type="number" min="1" bind:value={widthScaled} onchange={(e) => updateObject(e, "width")} />
+      <span class="input-group-text">{$tr("shell.pos.h")}</span>
+      <input class="form-control" type="number" min="1" bind:value={heightScaled} onchange={(e) => updateObject(e, "height")} />
+    </div>
+    <div class="form-check form-switch">
+      <input
+        class="form-check-input"
+        type="checkbox"
+        role="switch"
+        id="keepImageAspectRatio"
+        bind:checked={keepAspectRatio}
+        onchange={toggleAspectRatio} />
+      <label class="form-check-label" for="keepImageAspectRatio">
+        {$tr("params.generic.keepAspectRatio")}
+      </label>
+    </div>
+  {/if}
 </div>

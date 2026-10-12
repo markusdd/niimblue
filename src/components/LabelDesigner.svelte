@@ -1,12 +1,10 @@
 <script lang="ts">
   import Dropdown from "bootstrap/js/dist/dropdown";
   import * as fabric from "fabric";
-  import { onDestroy, onMount, tick } from "svelte";
-  import { ArUcoMarker } from "$/fabric-object/aruco";
-  import { Barcode } from "$/fabric-object/barcode";
-  import { QRCode } from "$/fabric-object/qrcode";
+  import { onDestroy, onMount, tick, untrack } from "svelte";
+  import { get } from "svelte/store";
   import { iconCodepoints, type MaterialIcon } from "$/styles/mdi_icons";
-  import { appConfig, automation, connectionState, csvData, loadedFonts } from "$/stores";
+  import { appConfig, automation, connectionState, csvData, loadedFonts, printerMeta, rfidInfo } from "$/stores";
   import {
     type ExportedLabelTemplate,
     type FabricJson,
@@ -15,29 +13,38 @@
     type OjectType,
   } from "$/types";
   import { FileUtils } from "$/utils/file_utils";
-  import { tr } from "$/utils/i18n";
+  import { locale, locales, tr } from "$/utils/i18n";
   import { LabelDesignerObjectHelper } from "$/utils/label_designer_object_helper";
   import { LocalStoragePersistence } from "$/utils/persistence";
   import { Toasts } from "$/utils/toasts";
   import { UndoRedo, type UndoState } from "$/utils/undo_redo";
-  import BarcodeParamsPanel from "$/components/designer-controls/BarcodeParamsControls.svelte";
   import CsvControl from "$/components/designer-controls/CsvControl.svelte";
-  import GenericObjectParamsControls from "$/components/designer-controls/GenericObjectParamsControls.svelte";
-  import IconPicker from "$/components/designer-controls/IconPicker.svelte";
-  import LabelPropsEditor from "$/components/designer-controls/LabelPropsEditor.svelte";
   import MdIcon from "$/components/basic/MdIcon.svelte";
-  import ObjectPicker from "$/components/designer-controls/ObjectPicker.svelte";
   import PrintPreview from "$/components/PrintPreview.svelte";
-  import ArUcoParamsPanel from "$/components/designer-controls/ArUcoParamsControls.svelte";
-  import QrCodeParamsPanel from "$/components/designer-controls/QRCodeParamsControls.svelte";
-  import TextParamsControls from "$/components/designer-controls/TextParamsControls.svelte";
-  import VariableInsertControl from "$/components/designer-controls/VariableInsertControl.svelte";
   import { DEFAULT_LABEL_PROPS, GRID_SIZE, OBJECT_DEFAULTS } from "$/defaults";
   import { LabelDesignerUtils } from "$/utils/label_designer_utils";
   import SavedLabelsMenu from "$/components/designer-controls/SavedLabelsMenu.svelte";
   import { CustomCanvas } from "$/fabric-object/custom_canvas";
-  import VectorParamsControls from "$/components/designer-controls/VectorParamsControls.svelte";
   import { CanvasUtils } from "$/utils/canvas_utils";
+  import DebugStuff from "$/components/DebugStuff.svelte";
+  import PrinterConnector from "$/components/PrinterConnector.svelte";
+  import InspectorPanel from "$/components/shell/InspectorPanel.svelte";
+  import InsertPalette from "$/components/shell/InsertPalette.svelte";
+  import RibbonStatus from "$/components/shell/RibbonStatus.svelte";
+  import { normalizeTurns, rotatePointCw, rotateSplit, rotateTail } from "$/utils/label_orientation";
+  import { LabelType, Utils } from "@mmote/niimbluelib";
+  import { formatMm, formatMmValue } from "$/utils/label_units";
+  import {
+    detectLoadedRoll,
+    labelPropsFromRoll,
+    paperMillimetres,
+    recallRoll,
+    recordFromProps,
+    rememberRoll,
+    rollIdentity,
+    rollSignature,
+    sameLabelGeometry,
+  } from "$/utils/roll_memory";
 
   let htmlCanvas: HTMLCanvasElement;
 
@@ -52,6 +59,22 @@
   let windowWidth = $state<number>(0);
   let undoState = $state<UndoState>({ undoDisabled: false, redoDisabled: false });
   let zoomText = $state<string>("100%");
+  let iconPanelOpen = $state<boolean>(false);
+  let layersRevision = $state<number>(0);
+  let debugStuffShow = $state<boolean>(false);
+  let rollStatus = $state<{ widthMm: number; heightMm: number; tailMm: number; remaining?: number } | "unknown">();
+  let appliedRollSignature = "";
+  let isStandalone = Utils.getAvailableTransports().capacitorBle || "__TAURI__" in window;
+
+  const bumpLayers = () => {
+    layersRevision += 1;
+  };
+
+  const shapeLabel = (shape: LabelProps["shape"]) => {
+    if (shape === "circle") return $tr("shell.shape.circle");
+    if (shape === "rounded_rect") return $tr("shell.shape.rounded_rect");
+    return $tr("shell.shape.rect");
+  };
 
   const undo = new UndoRedo();
 
@@ -150,13 +173,59 @@
     }
   };
 
+  const rememberCurrentRoll = (props: LabelProps) => {
+    const info = get(rfidInfo);
+    const tag = info.labelRfidInfo;
+    const key = tag?.tagPresent ? rollIdentity(tag) : undefined;
+    if (!key) return;
+    const labelType = paperMillimetres(info)?.labelType ?? recallRoll(key)?.labelType;
+    rememberRoll(key, recordFromProps(props, labelType));
+  };
+
+  const rotateLabel = () => {
+    const canvas = fabricCanvas;
+    if (!canvas) return;
+    const oldW = canvas.getWidth();
+    const oldH = canvas.getHeight();
+    if (oldW < 1 || oldH < 1) return;
+    canvas.discardActiveObject();
+    undo.paused = true;
+    try {
+      for (const obj of canvas.getObjects()) {
+        const center = obj.getCenterPoint();
+        const next = rotatePointCw(center.x, center.y, oldW, oldH);
+        obj.rotate(((obj.angle ?? 0) + 90) % 360);
+        obj.setPositionByOrigin(new fabric.Point(next.x, next.y), "center", "center");
+        obj.setCoords();
+      }
+    } finally {
+      undo.paused = false;
+    }
+    const turns = normalizeTurns((labelProps.quarterTurns ?? 0) + 1);
+    onUpdateLabelProps({
+      ...labelProps,
+      quarterTurns: turns,
+      size: { width: labelProps.size.height, height: labelProps.size.width },
+      tailPos: rotateTail(labelProps.tailPos ?? "right", 1),
+      split: labelProps.shape === "circle" ? "none" : rotateSplit(labelProps.split ?? "none", 1),
+    });
+    canvas.requestRenderAll();
+    bumpLayers();
+  };
+
   const onUpdateLabelProps = (newProps: LabelProps) => {
     labelProps = newProps;
-    fabricCanvas!.setDimensions(labelProps.size);
-    fabricCanvas!.virtualZoom(fabricCanvas!.getVirtualZoom());
+    const canvas = fabricCanvas!;
+    // Resize paints immediately. The feed mark has to follow quarterTurns
+    // in that same paint, or it stays on the top of the resized label.
+    canvas.setLabelProps(newProps);
+    canvas.setDimensions(newProps.size);
+    canvas.virtualZoom(canvas.getVirtualZoom());
+    canvas.renderAll();
     try {
       LocalStoragePersistence.saveLastLabelProps(labelProps);
       undo.push(fabricCanvas!, labelProps);
+      rememberCurrentRoll(labelProps);
     } catch (e) {
       Toasts.zodErrors(e, "Label parameters save error:");
     }
@@ -202,6 +271,18 @@
       fontSize: 100,
     });
     undo.push(fabricCanvas!, labelProps);
+    bumpLayers();
+  };
+
+  const onTimePicked = () => {
+    const obj = LabelDesignerObjectHelper.addText(fabricCanvas!, "{dt | DD.MM.YYYY HH:mm}", {
+      textAlign: "left",
+      originX: "left",
+      originY: "top",
+    });
+    fabricCanvas!.setActiveObject(obj);
+    undo.push(fabricCanvas!, labelProps);
+    bumpLayers();
   };
 
   const onSvgIconPicked = (i: string) => {
@@ -366,12 +447,18 @@
       }
     });
 
+    fabricCanvas.on("object:added", bumpLayers);
+    fabricCanvas.on("object:removed", bumpLayers);
+    bumpLayers();
+
     fabricCanvas.on("object:modified", (): void => {
       undo.push(fabricCanvas!, labelProps);
+      bumpLayers();
     });
 
     fabricCanvas.on("text:changed", () => {
       editRevision++;
+      bumpLayers();
     });
 
     fabricCanvas.on("object:removed", (): void => {
@@ -453,8 +540,78 @@
     window.removeEventListener("hashchange", loadLabelFromUrl);
   });
 
+  const saveDetectedLabelType = (labelType: LabelType) => {
+    try {
+      const saved = LocalStoragePersistence.loadSavedPreviewProps() ?? {};
+      if (saved.labelType === labelType) return;
+      LocalStoragePersistence.savePreviewProps({ ...saved, labelType });
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  const announceRoll = (detected: { remaining?: number; roll: { widthMm: number; heightMm: number } }) => {
+    let text = `${get(tr)("shell.roll_loaded")} ${formatMmValue(detected.roll.widthMm)} × ${formatMmValue(detected.roll.heightMm)} mm`;
+    if (detected.remaining !== undefined) {
+      text += ` · ${detected.remaining} ${get(tr)("shell.roll_left")}`;
+    }
+    Toasts.message(text, 7000);
+  };
+
   $effect(() => {
-    fabricCanvas?.setLabelProps(labelProps);
+    const canvas = fabricCanvas;
+    const info = $rfidInfo;
+    const connected = $connectionState === "connected";
+    const direction = $printerMeta?.printDirection === "left" ? "left" : "top";
+    if (!canvas || !connected) {
+      appliedRollSignature = "";
+      rollStatus = undefined;
+      return;
+    }
+
+    const detected = detectLoadedRoll(info, direction);
+    if (!detected) {
+      appliedRollSignature = "";
+      rollStatus = undefined;
+      return;
+    }
+
+    if (!detected.roll) {
+      if (appliedRollSignature !== detected.key) {
+        appliedRollSignature = detected.key;
+        rollStatus = "unknown";
+        Toasts.message(get(tr)("shell.roll_unknown"), 12000);
+      }
+      return;
+    }
+
+    rollStatus = {
+      widthMm: detected.roll.widthMm,
+      heightMm: detected.roll.heightMm,
+      tailMm: detected.roll.tailLengthMm,
+      remaining: detected.remaining,
+    };
+    const signature = rollSignature(detected);
+    if (signature === appliedRollSignature) return;
+    appliedRollSignature = signature;
+
+    const roll = detected.roll;
+    const next = labelPropsFromRoll(roll);
+    const current = untrack(() => labelProps);
+    if (!sameLabelGeometry(current, next)) {
+      onUpdateLabelProps(next);
+    } else {
+      rememberCurrentRoll(next);
+    }
+    if (roll.labelType !== undefined) saveDetectedLabelType(roll.labelType);
+    announceRoll({ remaining: detected.remaining, roll });
+  });
+
+  $effect(() => {
+    const turns = labelProps.quarterTurns;
+    const canvas = fabricCanvas;
+    if (!canvas) return;
+    canvas.setLabelProps({ ...labelProps, quarterTurns: turns });
   });
 
   $effect(() => {
@@ -472,152 +629,159 @@
 
 <svelte:window bind:innerWidth={windowWidth} onkeydown={onKeyDown} onpaste={onPaste} />
 
-<div class="image-editor">
-  <div class="row mb-3">
-    <div class="col d-flex justify-content-center">
-      <div class="canvas-wrapper print-start-{labelProps.printDirection}">
+<div class="editor-shell">
+  <header class="topbar">
+    <div class="brand">
+      <span class="niim">Niim</span><span class="blue">Blue{isStandalone ? "s" : ""}</span>
+    </div>
+
+    <button class="tool-btn" type="button" disabled={undoState.undoDisabled} onclick={() => undo.undo()} title={$tr("editor.undo")}>
+      <MdIcon icon="undo" />
+      <span>{$tr("shell.undo")}</span>
+    </button>
+    <button class="tool-btn" type="button" disabled={undoState.redoDisabled} onclick={() => undo.redo()} title={$tr("editor.redo")}>
+      <MdIcon icon="redo" />
+      <span>{$tr("shell.redo")}</span>
+    </button>
+    <button class="tool-btn" type="button" onclick={clearCanvas} title={$tr("editor.clear")}>
+      <MdIcon icon="cancel_presentation" />
+      <span>{$tr("shell.clear")}</span>
+    </button>
+    <button class="tool-btn" class:active={$appConfig.gridEnabled} type="button" onclick={toggleGrid} title={$tr("editor.grid")}>
+      <MdIcon icon="grid_on" />
+      <span>{$tr("editor.grid")}</span>
+    </button>
+    <button class="tool-btn" type="button" onclick={() => fabricCanvas?.resetVirtualZoom()} title={$tr("shell.zoom")}>
+      <MdIcon icon="search" />
+      <span>{zoomText}</span>
+    </button>
+
+    {#if fabricCanvas}
+      <SavedLabelsMenu
+        labeled
+        canvas={fabricCanvas}
+        onRequestLabelTemplate={exportCurrentLabel}
+        {onLoadRequested}
+        {csvEnabled} />
+    {/if}
+    <CsvControl labeled bind:enabled={csvEnabled} onPlaceholderPicked={onCsvPlaceholderPicked} />
+
+    <div class="topbar-spacer"></div>
+
+    <select class="form-select form-select-sm lang-select" bind:value={$locale} aria-label={$tr("shell.language")}>
+      {#each Object.entries(locales).sort((a, b) => {
+        const rank = (code: string) => (code === "en" ? 0 : code === "de" ? 1 : 2);
+        return rank(a[0]) - rank(b[0]) || a[1].localeCompare(b[1]);
+      }) as [key, name] (key)}
+        <option value={key}>{name}</option>
+      {/each}
+    </select>
+
+    <PrinterConnector />
+
+    <button class="tool-btn" type="button" onclick={openPreview}>
+      <MdIcon icon="visibility" />
+      <span>{$tr("editor.preview")}</span>
+    </button>
+    <button
+      class="tool-btn primary"
+      type="button"
+      onclick={openPreviewAndPrint}
+      disabled={$connectionState !== "connected"}
+      title={$tr("editor.print")}>
+      <MdIcon icon="print" />
+      <span>{$tr("editor.print")}</span>
+    </button>
+  </header>
+
+  <div class="editor-body">
+    <aside class="insert-rail">
+      <InsertPalette
+        {labelProps}
+        onInsert={onObjectPicked}
+        onTime={onTimePicked}
+        iconOpen={iconPanelOpen}
+        onToggleIcons={() => (iconPanelOpen = !iconPanelOpen)}
+        onIcon={onIconPicked}
+        onSvgIcon={onSvgIconPicked}
+        {zplImageReady}
+        {pdfImageReady}
+        canvas={fabricCanvas}
+        {layersRevision}
+        {selectedObject} />
+    </aside>
+
+    <main class="canvas-stage">
+      <div class="canvas-sheet print-start-{labelProps.printDirection}">
         <canvas bind:this={htmlCanvas}></canvas>
       </div>
-    </div>
+    </main>
+
+    <aside class="inspector">
+      <InspectorPanel
+        {labelProps}
+        onUpdateLabelProps={onUpdateLabelProps}
+        onRotate={rotateLabel}
+        {selectedObject}
+        {selectedCount}
+        {editRevision}
+        onDelete={deleteSelected}
+        onClone={cloneSelected}
+        onValueUpdated={controlValueUpdated} />
+    </aside>
   </div>
 
-  <div class="row mb-1">
-    <div class="col d-flex justify-content-center">
-      <div class="toolbar d-flex flex-wrap gap-1 justify-content-center align-items-center">
-        <LabelPropsEditor {labelProps} onChange={onUpdateLabelProps} />
-
-        <button class="btn btn-sm btn-secondary" onclick={clearCanvas} title={$tr("editor.clear")}>
-          <MdIcon icon="cancel_presentation" />
-        </button>
-
-        <SavedLabelsMenu
-          canvas={fabricCanvas!}
-          onRequestLabelTemplate={exportCurrentLabel}
-          {onLoadRequested}
-          {csvEnabled} />
-
-        <button
-          class="btn btn-sm btn-secondary"
-          disabled={undoState.undoDisabled}
-          onclick={() => undo.undo()}
-          title={$tr("editor.undo")}>
-          <MdIcon icon="undo" />
-        </button>
-
-        <button
-          class="btn btn-sm btn-secondary"
-          disabled={undoState.redoDisabled}
-          onclick={() => undo.redo()}
-          title={$tr("editor.redo")}>
-          <MdIcon icon="redo" />
-        </button>
-
-        <button
-          class="btn btn-sm {$appConfig.gridEnabled ? 'btn-primary' : 'btn-secondary'}"
-          onclick={toggleGrid}
-          title={$tr("editor.grid")}>
-          <MdIcon icon="grid_on" />
-        </button>
-
-        <button
-          class="btn btn-sm btn-secondary"
-          onclick={() => fabricCanvas?.resetVirtualZoom()}
-          title="Reset zoom">
-          {zoomText}
-        </button>
-
-        <CsvControl bind:enabled={csvEnabled} onPlaceholderPicked={onCsvPlaceholderPicked} />
-
-        <IconPicker onSubmit={onIconPicked} onSubmitSvg={onSvgIconPicked} />
-
-        <ObjectPicker onSubmit={onObjectPicked} {labelProps} {zplImageReady} {pdfImageReady}  />
-
-        <button class="btn btn-sm btn-primary ms-1" onclick={openPreview}>
-          <MdIcon icon="visibility" />
-          {$tr("editor.preview")}
-        </button>
-        <button
-          title="Print with default or saved parameters"
-          class="btn btn-sm btn-primary ms-1"
-          onclick={openPreviewAndPrint}
-          disabled={$connectionState !== "connected"}><MdIcon icon="print" /> {$tr("editor.print")}</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="row mb-1">
-    <div class="col d-flex justify-content-center">
-      <div class="toolbar d-flex flex-wrap gap-1 justify-content-center align-items-center">
-        {#if selectedCount > 0}
-          <button class="btn btn-sm btn-danger me-1" onclick={deleteSelected} title={$tr("editor.delete")}>
-            <MdIcon icon="delete" />
-          </button>
-        {/if}
-
-        {#if selectedCount > 0}
-          <button class="btn btn-sm btn-secondary me-1" onclick={cloneSelected} title={$tr("editor.clone")}>
-            <MdIcon icon="content_copy" />
-          </button>
-        {/if}
-
-        {#if selectedObject && selectedCount === 1}
-          <GenericObjectParamsControls {selectedObject} {editRevision} valueUpdated={controlValueUpdated} />
-        {/if}
-
-        {#if selectedObject}
-          <VectorParamsControls {selectedObject} {editRevision} valueUpdated={controlValueUpdated} />
-        {/if}
-
-        {#if selectedObject instanceof fabric.IText}
-          <TextParamsControls selectedText={selectedObject} {editRevision} valueUpdated={controlValueUpdated} />
-        {/if}
-
-        {#if selectedObject instanceof QRCode}
-          <QrCodeParamsPanel selectedQRCode={selectedObject} {editRevision} valueUpdated={controlValueUpdated} />
-        {/if}
-
-        {#if selectedObject instanceof ArUcoMarker}
-          <ArUcoParamsPanel selectedArUco={selectedObject} {editRevision} valueUpdated={controlValueUpdated} />
-        {/if}
-
-        {#if selectedObject instanceof Barcode}
-          <BarcodeParamsPanel selectedBarcode={selectedObject} {editRevision} valueUpdated={controlValueUpdated} />
-        {/if}
-
-        {#if selectedObject instanceof fabric.IText || selectedObject instanceof QRCode || (selectedObject instanceof Barcode && selectedObject.encoding === "CODE128B")}
-          <VariableInsertControl {selectedObject} valueUpdated={controlValueUpdated} />
-        {/if}
-      </div>
-    </div>
-  </div>
-
-  {#if previewOpened}
-    <PrintPreview
-      bind:show={previewOpened}
-      canvasCallback={getCanvasForPreview}
-      {labelProps}
-      {printNow}
-      {csvEnabled}
-      csvData={$csvData.data} />
-  {/if}
+  <footer class="status-bar">
+    <span>
+      {formatMm(labelProps.size.width)} × {formatMm(labelProps.size.height)} {$tr("params.label.mm")}
+      {#if labelProps.size.width > labelProps.size.height}
+        · {$tr("params.label.landscape")}
+      {:else if labelProps.size.height > labelProps.size.width}
+        · {$tr("params.label.portrait")}
+      {/if}
+    </span>
+    <RibbonStatus compact />
+    {#if rollStatus === "unknown"}
+      <span>{$tr("shell.roll_unknown_short")}</span>
+    {:else if rollStatus}
+      <span>
+        {$tr("shell.roll")} {formatMmValue(rollStatus.widthMm)} × {formatMmValue(rollStatus.heightMm)}
+        {#if rollStatus.tailMm > 0}+ {formatMmValue(rollStatus.tailMm)}{/if}
+        mm{#if rollStatus.remaining !== undefined}
+          · {rollStatus.remaining} {$tr("shell.roll_left")}{/if}
+      </span>
+    {/if}
+    <span>{shapeLabel(labelProps.shape)}</span>
+    <span>
+      {$tr("params.label.direction")}:
+      {labelProps.printDirection === "top" ? $tr("params.label.direction.top") : $tr("params.label.direction.left")}
+    </span>
+    <span class="status-conn" class:on={$connectionState === "connected"}>
+      {#if $connectionState === "connected"}
+        {$tr("shell.connected")}{#if $printerMeta?.model} · {$printerMeta.model}{/if}{#if $printerMeta?.dpi} · {$printerMeta.dpi} dpi{/if}
+      {:else if $connectionState === "connecting"}
+        {$tr("shell.connecting")}
+      {:else}
+        {$tr("shell.disconnected")}
+      {/if}
+    </span>
+    <span class="status-grow"></span>
+    <button class="debug-link" type="button" onclick={() => (debugStuffShow = true)} title={$tr("debug.title")}>
+      <MdIcon icon="bug_report" />
+    </button>
+  </footer>
 </div>
 
-<style>
-  .canvas-wrapper {
-    border: 1px solid rgba(0, 0, 0, 0.4);
-    background-color: rgba(60, 55, 63, 0.5);
-    max-width: 100%;
-    max-height: 70vh;
-    overflow: auto;
-  }
-  .canvas-wrapper.print-start-left {
-    border-left: 2px solid #ff4646;
-  }
-  .canvas-wrapper.print-start-top {
-    border-top: 2px solid #ff4646;
-  }
-  .canvas-wrapper canvas {
-    image-rendering: pixelated;
-    display: block;
-  }
-</style>
+{#if previewOpened}
+  <PrintPreview
+    bind:show={previewOpened}
+    canvasCallback={getCanvasForPreview}
+    {labelProps}
+    {printNow}
+    {csvEnabled}
+    csvData={$csvData.data} />
+{/if}
+
+{#if debugStuffShow}
+  <DebugStuff bind:show={debugStuffShow} />
+{/if}

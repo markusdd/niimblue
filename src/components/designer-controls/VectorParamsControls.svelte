@@ -1,6 +1,5 @@
 <script lang="ts">
   import { tr } from "$/utils/i18n";
-  import MdIcon from "$/components/basic/MdIcon.svelte";
   import * as fabric from "fabric";
 
   interface Props {
@@ -39,29 +38,27 @@
 <input type="hidden" value={editRevision}>
 
 {#if selectedObject instanceof fabric.Rect}
-  <div class="input-group flex-nowrap input-group-sm">
-    <span class="input-group-text" title={$tr("params.vector.round_radius")}>
-      <MdIcon icon="rounded_corner" />
-    </span>
+  <div class="field">
+    <label class="field-label" for="vector-radius">{$tr("params.vector.round_radius")}</label>
     <input
+      id="vector-radius"
       type="number"
       min="0"
       max={Math.min(selectedObject.width, selectedObject.height) / 2}
-      class="form-control"
+      class="form-control form-control-sm"
       value={selectedObject.rx}
       oninput={(e) => roundRadiusChanged(e.currentTarget.valueAsNumber)} />
   </div>
 {/if}
 
 {#if selectedObject instanceof fabric.Rect || selectedObject instanceof fabric.Circle || selectedObject instanceof fabric.Line || selectedObject instanceof fabric.Polyline}
-  <div class="input-group flex-nowrap input-group-sm">
-    <span class="input-group-text" title={$tr("params.vector.stroke_width")}>
-      <MdIcon icon="line_weight" />
-    </span>
+  <div class="field">
+    <label class="field-label" for="vector-stroke-width">{$tr("params.vector.stroke_width")}</label>
     <input
+      id="vector-stroke-width"
       type="number"
       min="1"
-      class="form-control"
+      class="form-control form-control-sm"
       value={selectedObject.strokeWidth}
       oninput={(e) => strokeWidthChanged(e.currentTarget.valueAsNumber)} />
   </div>
@@ -69,14 +66,9 @@
 
 {#if selectedObject instanceof fabric.Rect || selectedObject instanceof fabric.Circle || selectedObject instanceof fabric.Polyline}
   {#if !(selectedObject instanceof fabric.Polyline)}
-    <div class="input-group input-group-sm flex-nowrap fill">
-      <span class="input-group-text" title={$tr("params.vector.fill")}>
-        <MdIcon icon="format_color_fill" />
-      </span>
-      <select
-        class="form-select"
-        value={selectedObject.fill}
-        onchange={(e) => fillChanged(e.currentTarget.value)}>
+    <div class="field">
+      <label class="field-label" for="vector-fill">{$tr("params.vector.fill")}</label>
+      <select id="vector-fill" class="form-select form-select-sm" value={selectedObject.fill} onchange={(e) => fillChanged(e.currentTarget.value)}>
         <option value="white">{$tr("params.color.white")}</option>
         <option value="black">{$tr("params.color.black")}</option>
         <option value="red">{$tr("params.color.red")}</option>
@@ -85,14 +77,9 @@
     </div>
   {/if}
 
-  <div class="input-group input-group-sm flex-nowrap fill">
-    <span class="input-group-text" title={$tr("params.vector.stroke_color")}>
-      <MdIcon icon="border_color" />
-    </span>
-    <select
-      class="form-select"
-      value={selectedObject.stroke}
-      onchange={(e) => strokeChanged(e.currentTarget.value)}>
+  <div class="field">
+    <label class="field-label" for="vector-stroke">{$tr("params.vector.stroke_color")}</label>
+    <select id="vector-stroke" class="form-select form-select-sm" value={selectedObject.stroke} onchange={(e) => strokeChanged(e.currentTarget.value)}>
       <option value="white">{$tr("params.color.white")}</option>
       <option value="black">{$tr("params.color.black")}</option>
       <option value="red">{$tr("params.color.red")}</option>
@@ -100,12 +87,3 @@
     </select>
   </div>
 {/if}
-
-<style>
-  .input-group {
-    width: 7em;
-  }
-  .input-group.fill {
-    width: 12em;
-  }
-</style>

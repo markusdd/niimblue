@@ -38,13 +38,16 @@ export const LabelPropsSchema = z.object({
   tailPos: z.enum(["right", "bottom", "left", "top"]).default("right").optional(),
   tailLength: z.number().default(0).optional(),
   mirror: z.enum(["none", "copy", "flip"]).default("none").optional(),
+  /** Clockwise quarter-turns of the design relative to the roll feed. */
+  quarterTurns: z.number().int().min(0).max(3).optional(),
 });
 
 export const LabelPresetSchema = z.object({
   width: z.number().positive(),
   height: z.number().positive(),
   unit: z.enum(["mm", "px"]),
-  dpmm: z.number().positive(),
+  /** Ignored. Older presets stored a printer density next to the size. */
+  dpmm: z.number().positive().optional(),
   printDirection: z.enum(["left", "top"]),
   title: z.string().optional(),
   shape: z.enum(["rect", "rounded_rect", "circle"]).default("rect").optional(),

@@ -1,6 +1,7 @@
 import * as fabric from "fabric";
 import { DEFAULT_LABEL_PROPS, GRID_SIZE } from "$/defaults";
 import type { LabelProps } from "$/types";
+import { workingEdge } from "$/utils/label_orientation";
 
 type LabelBounds = {
   startX: number;
@@ -21,7 +22,6 @@ type MirrorInfo = { pos: fabric.Point; flip: boolean };
 export class CustomCanvas extends fabric.Canvas {
   private labelProps: LabelProps = DEFAULT_LABEL_PROPS;
   private readonly SEPARATOR_LINE_WIDTH = 2;
-  private readonly ROUND_RADIUS = 10;
   private readonly TAIL_WIDTH = 40;
   private readonly GRAY = "#CFCFCF";
   private readonly MIRROR_GHOST_COLOR = "rgba(0, 0, 0, 0.3)";
@@ -194,6 +194,154 @@ export class CustomCanvas extends fabric.Canvas {
     this.requestRenderAll();
   }
 
+  private paperRadius(): number {
+    const bb = this.getLabelBounds();
+    return Math.max(6, Math.round(Math.min(bb.width, bb.height) * 0.12));
+  }
+
+  /** Outline of the printable paper. Corners outside this stay empty. */
+  private tracePaperPath(ctx: CanvasRenderingContext2D) {
+    const width = this.width ?? 1;
+    const height = this.height ?? 1;
+    ctx.beginPath();
+
+    if (this.labelProps.shape === "circle") {
+      const radius = Math.min(width, height) / 2;
+      ctx.arc(width / 2, height / 2, radius, 0, Math.PI * 2);
+      return;
+    }
+
+    const bb = this.getLabelBounds();
+    const splitParts = this.labelProps.splitParts ?? 2;
+    const radiusFor = (partWidth: number, partHeight: number) =>
+      Math.min(this.paperRadius(), partWidth / 2, partHeight / 2);
+
+    if (this.labelProps.shape === "rounded_rect") {
+      if (this.labelProps.split === "horizontal" && splitParts >= 2) {
+        const segmentHeight = bb.height / splitParts;
+        const radius = radiusFor(bb.width, segmentHeight);
+        ctx.roundRect(bb.startX, bb.startY, bb.width, segmentHeight, radius);
+        this.getFoldInfo().points.forEach((y) =>
+          ctx.roundRect(bb.startX, y, bb.width, segmentHeight, radius),
+        );
+      } else if (this.labelProps.split === "vertical" && splitParts >= 2) {
+        const segmentWidth = bb.width / splitParts;
+        const radius = radiusFor(segmentWidth, bb.height);
+        ctx.roundRect(bb.startX, bb.startY, segmentWidth, bb.height, radius);
+        this.getFoldInfo().points.forEach((x) =>
+          ctx.roundRect(x, bb.startY, segmentWidth, bb.height, radius),
+        );
+      } else {
+        const radius = radiusFor(bb.width, bb.height);
+        ctx.roundRect(bb.startX, bb.startY, bb.width, bb.height, radius);
+      }
+      return;
+    }
+
+    ctx.rect(bb.startX, bb.startY, bb.width, bb.height);
+  }
+
+  private drawTail(ctx: CanvasRenderingContext2D) {
+    if (this.labelProps.tailLength === undefined || this.labelProps.tailLength <= 0) {
+      return;
+    }
+
+    const bb = this.getLabelBounds();
+    const roundRadius = this.labelProps.shape === "rounded_rect" ? this.paperRadius() : 0;
+    ctx.fillStyle = this.GRAY;
+    ctx.beginPath();
+
+    if (this.labelProps.tailPos === "right") {
+      ctx.rect(
+        bb.endX - roundRadius,
+        bb.endY / 2 - this.TAIL_WIDTH / 2,
+        (this.width ?? 0) - bb.endX + roundRadius,
+        this.TAIL_WIDTH,
+      );
+    } else if (this.labelProps.tailPos === "bottom") {
+      ctx.rect(
+        bb.endX / 2 - this.TAIL_WIDTH / 2,
+        bb.endY - roundRadius,
+        this.TAIL_WIDTH,
+        (this.height ?? 0) - bb.endY + roundRadius,
+      );
+    } else if (this.labelProps.tailPos === "left") {
+      ctx.rect(0, bb.endY / 2 - this.TAIL_WIDTH / 2, bb.startX + roundRadius, this.TAIL_WIDTH);
+    } else if (this.labelProps.tailPos === "top") {
+      ctx.rect(bb.endX / 2 - this.TAIL_WIDTH / 2, 0, this.TAIL_WIDTH, bb.startY + roundRadius);
+    }
+
+    ctx.fill();
+  }
+
+  private drawPrintStart(ctx: CanvasRenderingContext2D) {
+    const width = this.width ?? 1;
+    const height = this.height ?? 1;
+    const bb = this.getLabelBounds();
+    // Sit inside the paper. A stroke on the clip boundary disappears,
+    // which used to hide the mark once it moved onto a side edge.
+    const inset = 8;
+    ctx.save();
+    ctx.strokeStyle = "#c4554a";
+    ctx.lineWidth = 3;
+    ctx.lineCap = "butt";
+    ctx.beginPath();
+
+    const edge = workingEdge(this.labelProps.printDirection, this.labelProps.quarterTurns);
+    if (this.labelProps.shape === "circle") {
+      const radius = Math.min(width, height) / 2 - inset;
+      const cx = width / 2;
+      const cy = height / 2;
+      const arc: Record<typeof edge, [number, number]> = {
+        top: [-Math.PI * 0.8, -Math.PI * 0.2],
+        right: [-Math.PI * 0.3, Math.PI * 0.3],
+        bottom: [Math.PI * 0.2, Math.PI * 0.8],
+        left: [Math.PI * 0.7, Math.PI * 1.3],
+      };
+      ctx.arc(cx, cy, Math.max(4, radius), arc[edge][0], arc[edge][1]);
+    } else if (edge === "top") {
+      ctx.moveTo(bb.startX, bb.startY + inset);
+      ctx.lineTo(bb.endX, bb.startY + inset);
+    } else if (edge === "bottom") {
+      ctx.moveTo(bb.startX, bb.endY - inset);
+      ctx.lineTo(bb.endX, bb.endY - inset);
+    } else if (edge === "left") {
+      ctx.moveTo(bb.startX + inset, bb.startY);
+      ctx.lineTo(bb.startX + inset, bb.endY);
+    } else {
+      ctx.moveTo(bb.endX - inset, bb.startY);
+      ctx.lineTo(bb.endX - inset, bb.endY);
+    }
+
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  private drawGrid(ctx: CanvasRenderingContext2D) {
+    if (!this.gridEnabled) {
+      return;
+    }
+
+    const bb = this.getLabelBounds();
+    ctx.save();
+    ctx.setLineDash([]);
+    ctx.strokeStyle = "rgba(70, 78, 110, 0.55)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+
+    const step = GRID_SIZE * 5;
+    for (let x = bb.startX + step; x < bb.endX; x += step) {
+      ctx.moveTo(x, bb.startY);
+      ctx.lineTo(x, bb.endY);
+    }
+    for (let y = bb.startY + step; y < bb.endY; y += step) {
+      ctx.moveTo(bb.startX, y);
+      ctx.lineTo(bb.endX, y);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
   /** Get label bounds without tail */
   getLabelBounds(): LabelBounds {
     let endX = this.width ?? 1;
@@ -269,160 +417,78 @@ export class CustomCanvas extends fabric.Canvas {
     }
 
     ctx.save();
-    ctx.fillStyle = "white";
 
-    // Draw simple white background and exit
+    // Print preview wants a solid white bitmap. The editor leaves the
+    // corners outside a round label empty so the desk shows through.
     if (!this.customBackground) {
+      ctx.fillStyle = "white";
       ctx.fillRect(0, 0, this.width, this.height);
       ctx.restore();
       return;
     }
 
-    // Disable further actions for circle labels, just render
-    if (this.labelProps.shape === "circle") {
-      ctx.beginPath();
-      ctx.arc(this.width / 2, this.height / 2, this.height / 2, 0, 2 * Math.PI);
-      ctx.fill();
-      ctx.restore();
-      return;
+    if (this.labelProps.shape !== "circle") {
+      this.drawTail(ctx);
     }
 
-    let roundRadius = this.ROUND_RADIUS;
+    ctx.fillStyle = "white";
+    this.tracePaperPath(ctx);
+    ctx.fill();
+
+    ctx.strokeStyle = "rgba(40, 32, 22, 0.28)";
+    ctx.lineWidth = 1;
+    this.tracePaperPath(ctx);
+    ctx.stroke();
+
+    ctx.save();
+    this.tracePaperPath(ctx);
+    ctx.clip();
+    this.drawGrid(ctx);
+    this.drawPrintStart(ctx);
+    ctx.restore();
+
     const bb = this.getLabelBounds();
     const fold = this.getFoldInfo();
-
-    if (this.labelProps.shape !== "rounded_rect") {
-      roundRadius = 0;
-    }
-
-    // Draw tail
-    ctx.fillStyle = this.GRAY;
-
-    ctx.beginPath();
-    if (
-      this.labelProps.tailLength !== undefined &&
-      this.labelProps.tailLength > 0
-    ) {
-      if (this.labelProps.tailPos === "right") {
-        ctx.rect(
-          bb.endX - roundRadius,
-          bb.endY / 2 - this.TAIL_WIDTH / 2,
-          this.width - bb.endX + roundRadius,
-          this.TAIL_WIDTH,
-        );
-      } else if (this.labelProps.tailPos === "bottom") {
-        ctx.rect(
-          bb.endX / 2 - this.TAIL_WIDTH / 2,
-          bb.endY - roundRadius,
-          this.TAIL_WIDTH,
-          this.height - bb.endY + roundRadius,
-        );
-      } else if (this.labelProps.tailPos === "left") {
-        ctx.rect(
-          0,
-          bb.endY / 2 - this.TAIL_WIDTH / 2,
-          bb.startX + roundRadius,
-          this.TAIL_WIDTH,
-        );
-      } else if (this.labelProps.tailPos === "top") {
-        ctx.rect(
-          bb.endX / 2 - this.TAIL_WIDTH / 2,
-          0,
-          this.TAIL_WIDTH,
-          bb.startY + roundRadius,
-        );
-      }
-    }
-    ctx.fill();
-
-    // Draw label(s)
-    ctx.fillStyle = "white";
-
-    ctx.beginPath();
-
-    const splitParts = this.labelProps.splitParts ?? 2;
-
-    if (this.labelProps.shape === "rounded_rect") {
-      if (this.labelProps.split === "horizontal") {
-        const segmentHeight = bb.height / splitParts;
-        ctx.roundRect(
-          bb.startX,
-          bb.startY,
-          bb.width,
-          segmentHeight,
-          roundRadius,
-        ); // First part
-        fold.points.forEach((y) =>
-          ctx.roundRect(bb.startX, y, bb.width, segmentHeight, roundRadius),
-        ); // Other parts
-      } else if (this.labelProps.split === "vertical") {
-        const segmentWidth = bb.width / splitParts;
-        ctx.roundRect(
-          bb.startX,
-          bb.startY,
-          segmentWidth,
-          bb.height,
-          roundRadius,
-        ); // First part
-        fold.points.forEach((x) =>
-          ctx.roundRect(x, bb.startY, segmentWidth, bb.height, roundRadius),
-        ); // Other parts
-      } else {
-        ctx.roundRect(0, 0, this.width, this.height, roundRadius);
-      }
-    } else {
-      ctx.rect(bb.startX, bb.startY, bb.width, bb.height);
-    }
-
-    ctx.fill();
-
-    // Draw separator
-
+    const roundRadius = this.labelProps.shape === "rounded_rect" ? this.paperRadius() : 0;
     ctx.strokeStyle = this.GRAY;
     ctx.lineWidth = this.SEPARATOR_LINE_WIDTH;
     ctx.setLineDash([8, 8]);
     ctx.beginPath();
 
     if (fold.axis === "horizontal") {
-      fold.points.forEach((x) => {
-        ctx.moveTo(bb.startX + roundRadius, x);
-        ctx.lineTo(bb.endX - roundRadius, x);
+      fold.points.forEach((y) => {
+        ctx.moveTo(bb.startX + roundRadius, y);
+        ctx.lineTo(bb.endX - roundRadius, y);
       });
     } else if (fold.axis === "vertical") {
-      fold.points.forEach((y) => {
-        ctx.moveTo(y, bb.startY + roundRadius);
-        ctx.lineTo(y, bb.endY - roundRadius);
+      fold.points.forEach((x) => {
+        ctx.moveTo(x, bb.startY + roundRadius);
+        ctx.lineTo(x, bb.endY - roundRadius);
       });
     }
 
     ctx.stroke();
-
-    // Draw grid
-    if (this.gridEnabled) {
-      ctx.setLineDash([]);
-      ctx.strokeStyle = "rgba(100, 100, 255, 0.25)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-
-      const step = GRID_SIZE * 5;
-      for (let x = bb.startX + step; x < bb.endX; x += step) {
-        ctx.moveTo(x, bb.startY);
-        ctx.lineTo(x, bb.endY);
-      }
-      for (let y = bb.startY + step; y < bb.endY; y += step) {
-        ctx.moveTo(bb.startX, y);
-        ctx.lineTo(bb.endX, y);
-      }
-      ctx.stroke();
-    }
-
     ctx.restore();
   }
   override _renderObjects(
     ctx: CanvasRenderingContext2D,
     objects: fabric.FabricObject[],
   ) {
+    const clipToPaper =
+      this.customBackground &&
+      (this.labelProps.shape === "circle" || this.labelProps.shape === "rounded_rect");
+
+    if (clipToPaper) {
+      ctx.save();
+      this.tracePaperPath(ctx);
+      ctx.clip();
+    }
+
     super._renderObjects(ctx, objects);
+
+    if (clipToPaper) {
+      ctx.restore();
+    }
 
     if (!this.highlightMirror || this.getActiveObjects().length > 1) {
       return;

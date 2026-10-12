@@ -1,7 +1,6 @@
 <script lang="ts">
   import { QRCode } from "$/fabric-object/qrcode";
   import { tr } from "$/utils/i18n";
-  import MdIcon from "$/components/basic/MdIcon.svelte";
 
   interface Props {
     selectedQRCode: QRCode;
@@ -14,12 +13,11 @@
 
 <input type="hidden" value={editRevision}>
 
-<div class="input-group input-group-sm flex-nowrap">
-  <span class="input-group-text" title={$tr("params.qrcode.ecl")}>
-    <MdIcon icon="auto_fix_high" />
-  </span>
+<div class="field">
+  <label class="field-label" for="qr-ecl">{$tr("params.qrcode.ecl")}</label>
   <select
-    class="form-select"
+    id="qr-ecl"
+    class="form-select form-select-sm"
     value={selectedQRCode.ecl}
     onchange={(e) => {
       selectedQRCode?.set("ecl", e.currentTarget.value);
@@ -32,12 +30,11 @@
   </select>
 </div>
 
-<div class="input-group input-group-sm flex-nowrap">
-  <span class="input-group-text" title={$tr("params.qrcode.mode")}>
-    <MdIcon icon="abc" />
-  </span>
+<div class="field">
+  <label class="field-label" for="qr-mode">{$tr("params.qrcode.mode")}</label>
   <select
-    class="form-select"
+    id="qr-mode"
+    class="form-select form-select-sm"
     value={selectedQRCode.mode}
     onchange={(e) => {
       selectedQRCode?.set("mode", e.currentTarget.value);
@@ -50,12 +47,11 @@
   </select>
 </div>
 
-<div class="input-group input-group-sm flex-nowrap">
-  <span class="input-group-text" title={$tr("params.qrcode.version")}>
-    <MdIcon icon="123" />
-  </span>
+<div class="field">
+  <label class="field-label" for="qr-version">{$tr("params.qrcode.version")}</label>
   <select
-    class="form-select"
+    id="qr-version"
+    class="form-select form-select-sm"
     value={selectedQRCode.qrVersion}
     onchange={(e) => {
       selectedQRCode?.set("qrVersion", parseInt(e.currentTarget.value));
@@ -68,20 +64,20 @@
   </select>
 </div>
 
-<textarea
-  class="qrcode-content form-control"
-  value={selectedQRCode.text}
-  oninput={(e) => {
-    selectedQRCode?.set("text", e.currentTarget.value);
-    valueUpdated();
-  }}></textarea>
+<div class="field">
+  <label class="field-label" for="qr-content">{$tr("params.barcode.content")}</label>
+  <textarea
+    id="qr-content"
+    class="qrcode-content form-control form-control-sm"
+    value={selectedQRCode.text}
+    oninput={(e) => {
+      selectedQRCode?.set("text", e.currentTarget.value);
+      valueUpdated();
+    }}></textarea>
+</div>
 
 <style>
-  .input-group {
-    width: fit-content;
-  }
-
   .qrcode-content {
-    height: 100px;
+    height: 6rem;
   }
 </style>
