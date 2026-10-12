@@ -62,7 +62,9 @@
 </div>
 
 <div hidden={tab !== "label"}>
-  <RibbonStatus />
+  <RibbonStatus
+    inkColor={labelProps.inkColor}
+    onInk={(color) => onUpdateLabelProps({ ...labelProps, inkColor: color })} />
   <LabelPropsEditor embedded {labelProps} onChange={onUpdateLabelProps} {onRotate} />
 </div>
 

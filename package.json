@@ -22,6 +22,7 @@
 		"@fontsource-variable/noto-sans": "^5.2.10",
 		"@formatjs/intl-localematcher": "^0.8.10",
 		"@mmote/niimbluelib": "0.47.0",
+		"@phosphor-icons/core": "^2.1.1",
 		"@popperjs/core": "^2.11.8",
 		"bootstrap": "5.3.8",
 		"d3-dsv": "^3.0.1",

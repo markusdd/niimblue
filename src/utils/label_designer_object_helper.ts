@@ -9,15 +9,70 @@ import { FileUtils } from "$/utils/file_utils";
 import { CanvasUtils } from "$/utils/canvas_utils";
 import { TextboxExt, TextboxExtProps } from "$/fabric-object/textbox-ext";
 
+type SvgBox = { left: number; top: number; width: number; height: number };
+
 export class LabelDesignerObjectHelper {
-  static async addSvg(canvas: fabric.Canvas, svgCode: string): Promise<fabric.FabricObject | fabric.Group> {
+  private static async loadSvg(svgCode: string): Promise<{ obj: fabric.FabricObject; viewWidth: number; viewHeight: number }> {
     const { objects, options } = await fabric.loadSVGFromString(svgCode);
-    const obj = fabric.util.groupSVGElements(
-      objects.filter((o) => o !== null),
-      options,
-    );
-    obj.set({ ...OBJECT_DEFAULTS });
-    CanvasUtils.fitObjectIntoCanvas(canvas, obj, OBJECT_DEFAULTS.left, OBJECT_DEFAULTS.top);
+    const parts = objects.filter((object): object is fabric.FabricObject => object !== null);
+    if (parts.length === 0) {
+      throw new Error("SVG has no shapes");
+    }
+    const obj = fabric.util.groupSVGElements(parts, options);
+    obj.set({ ...OBJECT_DEFAULTS, originX: "left", originY: "top" });
+    return {
+      obj,
+      viewWidth: Number(options.width) || obj.width || 1,
+      viewHeight: Number(options.height) || obj.height || 1,
+    };
+  }
+
+  static async addSvg(
+    canvas: fabric.Canvas,
+    svgCode: string,
+    opts?: { maxSide?: number; bounds?: SvgBox },
+  ): Promise<fabric.FabricObject> {
+    const { obj } = await this.loadSvg(svgCode);
+    if (opts?.maxSide && opts.maxSide > 0) {
+      const longest = Math.max(obj.width || 1, obj.height || 1);
+      obj.scale(opts.maxSide / longest);
+      const bounds = opts.bounds;
+      if (bounds) {
+        const scaledW = (obj.width || 1) * (obj.scaleX || 1);
+        const scaledH = (obj.height || 1) * (obj.scaleY || 1);
+        obj.set({
+          left: bounds.left + (bounds.width - scaledW) / 2,
+          top: bounds.top + (bounds.height - scaledH) / 2,
+        });
+      } else {
+        canvas.centerObject(obj);
+      }
+    } else {
+      CanvasUtils.fitObjectIntoCanvas(canvas, obj, OBJECT_DEFAULTS.left ?? 10, OBJECT_DEFAULTS.top ?? 10);
+    }
+    canvas.add(obj);
+    canvas.renderAll();
+    return obj;
+  }
+
+  /** Place an SVG into a fixed paper box. Used for frames, which must not be shrunk to fit their stroke. */
+  static async placeSvg(canvas: fabric.Canvas, svgCode: string, box: SvgBox): Promise<fabric.FabricObject> {
+    const { obj, viewWidth, viewHeight } = await this.loadSvg(svgCode);
+    // Scale by the SVG view size, then shift by whatever empty margin Fabric
+    // trimmed off the group. A full-bleed group needs no shift. A group that
+    // only wraps the stroke keeps that stroke on the inset it was drawn at.
+    const paintedW = obj.width || viewWidth;
+    const paintedH = obj.height || viewHeight;
+    const scaleX = box.width / viewWidth;
+    const scaleY = box.height / viewHeight;
+    obj.set({
+      left: box.left + ((viewWidth - paintedW) / 2) * scaleX,
+      top: box.top + ((viewHeight - paintedH) / 2) * scaleY,
+      scaleX,
+      scaleY,
+      perPixelTargetFind: true,
+    });
+    obj.setCoords();
     canvas.add(obj);
     canvas.renderAll();
     return obj;

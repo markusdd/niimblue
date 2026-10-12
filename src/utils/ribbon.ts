@@ -1,5 +1,6 @@
 import type { CombinedRfidInfo, HeartbeatData, RfidInfo } from "@mmote/niimbluelib";
 import { z } from "zod";
+import { inkColors } from "$/types";
 import { rollIdentity } from "$/utils/roll_memory";
 
 /**
@@ -8,11 +9,11 @@ import { rollIdentity } from "$/utils/roll_memory";
  */
 const STORAGE_KEY = "ribbon_memory";
 
-export const ribbonColors = ["black", "white", "red", "blue", "green", "gold", "red_black"] as const;
+export const ribbonColors = inkColors;
 
-export type RibbonColor = (typeof ribbonColors)[number];
+export type RibbonColor = (typeof inkColors)[number];
 
-const ColorSchema = z.enum(ribbonColors);
+const ColorSchema = z.enum(inkColors);
 const MemorySchema = z.record(z.string(), z.object({ color: ColorSchema }));
 
 export type RibbonSnapshot = {

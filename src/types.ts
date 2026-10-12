@@ -13,6 +13,14 @@ export type LabelSplit = "none" | "vertical" | "horizontal";
 export type TailPosition = "right" | "bottom" | "left" | "top";
 export type MirrorType = "none" | "copy" | "flip";
 
+/** Stock color is a screen preview. The printer uses whatever roll is loaded. */
+export const paperColors = ["white", "yellow", "pink", "orange", "green", "blue", "kraft", "silver", "black"] as const;
+export type PaperColor = (typeof paperColors)[number];
+
+/** Ribbon color is a screen preview. Objects stay black in the print mask. */
+export const inkColors = ["black", "white", "red", "blue", "green", "gold", "red_black"] as const;
+export type InkColor = (typeof inkColors)[number];
+
 type _Range<T extends number, R extends unknown[]> = R["length"] extends T ? R[number] : _Range<T, [R["length"], ...R]>;
 
 export type Range<T extends number> = number extends T ? number : _Range<T, []>;
@@ -40,6 +48,10 @@ export const LabelPropsSchema = z.object({
   mirror: z.enum(["none", "copy", "flip"]).default("none").optional(),
   /** Clockwise quarter-turns of the design relative to the roll feed. */
   quarterTurns: z.number().int().min(0).max(3).optional(),
+  /** Screen preview of the label stock. Omitted means white. */
+  paperColor: z.enum(paperColors).optional(),
+  /** Screen preview of the ribbon. Omitted means black. */
+  inkColor: z.enum(inkColors).optional(),
 });
 
 export const LabelPresetSchema = z.object({

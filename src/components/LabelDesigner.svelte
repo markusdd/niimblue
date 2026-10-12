@@ -4,7 +4,7 @@
   import { onDestroy, onMount, tick, untrack } from "svelte";
   import { get } from "svelte/store";
   import { iconCodepoints, type MaterialIcon } from "$/styles/mdi_icons";
-  import { appConfig, automation, connectionState, csvData, loadedFonts, printerMeta, rfidInfo } from "$/stores";
+  import { appConfig, automation, connectionState, csvData, heartbeatData, loadedFonts, printerMeta, rfidInfo } from "$/stores";
   import {
     type ExportedLabelTemplate,
     type FabricJson,
@@ -34,6 +34,8 @@
   import { normalizeTurns, rotatePointCw, rotateSplit, rotateTail } from "$/utils/label_orientation";
   import { LabelType, Utils } from "@mmote/niimbluelib";
   import { formatMm, formatMmValue } from "$/utils/label_units";
+  import { borderSvg, type BorderKind } from "$/utils/label_borders";
+  import { svgForPrint } from "$/data/clipart";
   import {
     detectLoadedRoll,
     labelPropsFromRoll,
@@ -45,6 +47,7 @@
     rollSignature,
     sameLabelGeometry,
   } from "$/utils/roll_memory";
+  import { rememberRibbonColor, ribbonSnapshot } from "$/utils/ribbon";
 
   let htmlCanvas: HTMLCanvasElement;
 
@@ -60,6 +63,7 @@
   let undoState = $state<UndoState>({ undoDisabled: false, redoDisabled: false });
   let zoomText = $state<string>("100%");
   let iconPanelOpen = $state<boolean>(false);
+  let framePanelOpen = $state<boolean>(false);
   let layersRevision = $state<number>(0);
   let debugStuffShow = $state<boolean>(false);
   let rollStatus = $state<{ widthMm: number; heightMm: number; tailMm: number; remaining?: number } | "unknown">();
@@ -214,6 +218,7 @@
   };
 
   const onUpdateLabelProps = (newProps: LabelProps) => {
+    const prevInk = labelProps.inkColor;
     labelProps = newProps;
     const canvas = fabricCanvas!;
     // Resize paints immediately. The feed mark has to follow quarterTurns
@@ -222,6 +227,10 @@
     canvas.setDimensions(newProps.size);
     canvas.virtualZoom(canvas.getVirtualZoom());
     canvas.renderAll();
+    if (newProps.inkColor && newProps.inkColor !== prevInk) {
+      const snap = ribbonSnapshot(get(rfidInfo), get(heartbeatData));
+      if (snap.barcode) rememberRibbonColor(snap.barcode, newProps.inkColor);
+    }
     try {
       LocalStoragePersistence.saveLastLabelProps(labelProps);
       undo.push(fabricCanvas!, labelProps);
@@ -285,9 +294,53 @@
     bumpLayers();
   };
 
-  const onSvgIconPicked = (i: string) => {
-    LabelDesignerObjectHelper.addSvg(fabricCanvas!, i);
-    undo.push(fabricCanvas!, labelProps);
+  const paperBox = () => {
+    const canvas = fabricCanvas!;
+    const shape = labelProps.shape ?? "rect";
+    if (shape === "circle") {
+      const width = canvas.width ?? 1;
+      const height = canvas.height ?? 1;
+      const diameter = Math.min(width, height);
+      return {
+        left: (width - diameter) / 2,
+        top: (height - diameter) / 2,
+        width: diameter,
+        height: diameter,
+      };
+    }
+    const bounds = canvas.getLabelBounds();
+    return { left: bounds.startX, top: bounds.startY, width: bounds.width, height: bounds.height };
+  };
+
+  const keepInserted = (obj: fabric.FabricObject) => {
+    const canvas = fabricCanvas!;
+    canvas.setActiveObject(obj);
+    undo.push(canvas, labelProps);
+    bumpLayers();
+  };
+
+  const onSvgIconPicked = (svg: string) => {
+    void LabelDesignerObjectHelper.addSvg(fabricCanvas!, svg)
+      .then(keepInserted)
+      .catch((e) => Toasts.error(e));
+  };
+
+  const onClipartPicked = (svg: string) => {
+    const canvas = fabricCanvas!;
+    const bounds = paperBox();
+    const maxSide = Math.round(Math.min(bounds.width, bounds.height) * 0.38);
+    void LabelDesignerObjectHelper.addSvg(canvas, svgForPrint(svg), { maxSide, bounds })
+      .then(keepInserted)
+      .catch((e) => Toasts.error(e));
+  };
+
+  const onFramePicked = (kind: BorderKind) => {
+    const canvas = fabricCanvas!;
+    const box = paperBox();
+    const svg = borderSvg(kind, box.width, box.height, labelProps.shape ?? "rect");
+    void LabelDesignerObjectHelper.placeSvg(canvas, svg, box)
+      .then(keepInserted)
+      .catch((e) => Toasts.error(e));
   };
 
   const openPreview = () => {
@@ -596,9 +649,11 @@
     appliedRollSignature = signature;
 
     const roll = detected.roll;
-    const next = labelPropsFromRoll(roll);
     const current = untrack(() => labelProps);
-    if (!sameLabelGeometry(current, next)) {
+    const next = labelPropsFromRoll(roll);
+    // Ink belongs to the cartridge, not the roll. A new roll does not keep the previous stock color.
+    if (current.inkColor) next.inkColor = current.inkColor;
+    if (!sameLabelGeometry(current, next) || (current.paperColor ?? "white") !== (next.paperColor ?? "white")) {
       onUpdateLabelProps(next);
     } else {
       rememberCurrentRoll(next);
@@ -612,6 +667,20 @@
     const canvas = fabricCanvas;
     if (!canvas) return;
     canvas.setLabelProps({ ...labelProps, quarterTurns: turns });
+  });
+
+  // A remembered cartridge color wins once the printer is connected.
+  $effect(() => {
+    const connected = $connectionState === "connected";
+    const info = $rfidInfo;
+    const beat = $heartbeatData;
+    const canvas = fabricCanvas;
+    if (!canvas || !connected) return;
+    const snap = ribbonSnapshot(info, beat);
+    if (snap.state !== "ready" || !snap.color) return;
+    const current = untrack(() => labelProps);
+    if (current.inkColor === snap.color) return;
+    onUpdateLabelProps({ ...current, inkColor: snap.color });
   });
 
   $effect(() => {
@@ -701,9 +770,19 @@
         onInsert={onObjectPicked}
         onTime={onTimePicked}
         iconOpen={iconPanelOpen}
-        onToggleIcons={() => (iconPanelOpen = !iconPanelOpen)}
+        onToggleIcons={() => {
+          iconPanelOpen = !iconPanelOpen;
+          if (iconPanelOpen) framePanelOpen = false;
+        }}
+        frameOpen={framePanelOpen}
+        onToggleFrames={() => {
+          framePanelOpen = !framePanelOpen;
+          if (framePanelOpen) iconPanelOpen = false;
+        }}
         onIcon={onIconPicked}
         onSvgIcon={onSvgIconPicked}
+        onClipart={onClipartPicked}
+        onFrame={onFramePicked}
         {zplImageReady}
         {pdfImageReady}
         canvas={fabricCanvas}

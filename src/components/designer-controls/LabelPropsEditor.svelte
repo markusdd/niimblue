@@ -1,12 +1,16 @@
 <script lang="ts">
   import {
+    inkColors,
     LabelPresetSchema,
+    paperColors,
+    type InkColor,
     type LabelPreset,
     type LabelProps,
     type LabelShape,
     type LabelSplit,
     type LabelUnit,
     type MirrorType,
+    type PaperColor,
     type TailPosition,
   } from "$/types";
   import LabelPresetsBrowser from "$/components/designer-controls/LabelPresetsBrowser.svelte";
@@ -22,6 +26,8 @@
   import { z } from "zod";
   import { formatMm, formatMmValue, mmToPx, normalizeLabelPresets, pxToEditableMm, pxToMm } from "$/utils/label_units";
   import { normalizeTurns, swapIfOdd } from "$/utils/label_orientation";
+  import { inkSwatch, paperSwatch } from "$/utils/label_colors";
+  import type { TranslationKey } from "$/utils/i18n";
 
   interface Props {
     labelProps: LabelProps;
@@ -105,8 +111,23 @@
       tailLength: toDesignLength(tailLength),
       mirror,
       quarterTurns: normalizeTurns(quarterTurns),
+      ...(labelProps.paperColor ? { paperColor: labelProps.paperColor } : {}),
+      ...(labelProps.inkColor ? { inkColor: labelProps.inkColor } : {}),
     });
   };
+
+  const pickPaper = (paperColor: PaperColor) => {
+    onChange({ ...labelProps, paperColor });
+  };
+
+  const pickInk = (inkColor: InkColor) => {
+    onChange({ ...labelProps, inkColor });
+  };
+
+  const paperKey = (color: PaperColor): TranslationKey => `shell.paper.${color}` as TranslationKey;
+  const inkKey = (color: InkColor): TranslationKey => `shell.ribbon.${color}` as TranslationKey;
+  const lightPaper = (color: PaperColor) => color !== "black" && color !== "green" && color !== "blue";
+  const lightInk = (color: InkColor) => color === "white" || color === "gold";
 
   const onApply = () => applyWith(labelProps.quarterTurns);
 
@@ -367,6 +388,40 @@
       </button>
       {/if}
 
+      <div class="color-block">
+        <span class="color-label">{$tr("shell.paper.color")}</span>
+        <div class="swatches" role="radiogroup" aria-label={$tr("shell.paper.color")}>
+          {#each paperColors as color (color)}
+            <button
+              type="button"
+              class="swatch"
+              class:light={lightPaper(color)}
+              class:active={(labelProps.paperColor ?? "white") === color}
+              style:background={paperSwatch[color]}
+              data-paper={color}
+              aria-pressed={(labelProps.paperColor ?? "white") === color}
+              title={$tr(paperKey(color))}
+              onclick={() => pickPaper(color)}></button>
+          {/each}
+        </div>
+        <span class="color-label">{$tr("shell.ribbon.color")}</span>
+        <div class="swatches" role="radiogroup" aria-label={$tr("shell.ribbon.color")}>
+          {#each inkColors as color (color)}
+            <button
+              type="button"
+              class="swatch"
+              class:light={lightInk(color)}
+              class:active={(labelProps.inkColor ?? "black") === color}
+              style:background={inkSwatch[color]}
+              data-ink={color}
+              aria-pressed={(labelProps.inkColor ?? "black") === color}
+              title={$tr(inkKey(color))}
+              onclick={() => pickInk(color)}></button>
+          {/each}
+        </div>
+        <p class="color-hint">{$tr("shell.color.hint")}</p>
+      </div>
+
       <div class="input-group flex-nowrap input-group-sm print-dir-switch mb-2" role="group">
         <span class="input-group-text w-100">{$tr("params.label.direction")}</span>
         {#each printDirections as v (v)}
@@ -505,6 +560,53 @@
 
   .cursor-help {
     cursor: help;
+  }
+
+  .color-block {
+    margin: 0 0 0.85rem;
+  }
+
+  .color-label {
+    display: block;
+    margin: 0.35rem 0 0.25rem;
+    color: #6d655b;
+    font-size: 0.75rem;
+  }
+
+  .swatches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    padding: 5px;
+    margin: -5px;
+  }
+
+  .swatch {
+    flex: 0 0 auto;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 0;
+    border-radius: 99px;
+    padding: 0;
+    cursor: pointer;
+    box-shadow: inset 0 0 0 1px rgba(36, 31, 26, 0.18);
+  }
+
+  .swatch.light {
+    box-shadow: inset 0 0 0 1px #b7b1a6;
+  }
+
+  .swatch.active {
+    box-shadow:
+      0 0 0 2px #f6f3ec,
+      0 0 0 4px #6d829c;
+  }
+
+  .color-hint {
+    margin: 0.4rem 0 0;
+    color: #6d655b;
+    font-size: 0.72rem;
+    line-height: 1.3;
   }
 
   .svg-icon {

@@ -8,12 +8,15 @@
     ribbonSnapshot,
     type RibbonColor,
   } from "$/utils/ribbon";
+  import { inkSwatch } from "$/utils/label_colors";
 
   interface Props {
     compact?: boolean;
+    inkColor?: RibbonColor;
+    onInk?: (color: RibbonColor) => void;
   }
 
-  let { compact = false }: Props = $props();
+  let { compact = false, inkColor, onInk }: Props = $props();
 
   let revision = $state(0);
 
@@ -24,17 +27,13 @@
     return ribbonSnapshot($rfidInfo, $heartbeatData);
   });
 
-  const swatch: Record<RibbonColor, string> = {
-    black: "#1c1c1c",
-    white: "#f7f4ee",
-    red: "#c23b3b",
-    blue: "#2f5f9e",
-    green: "#2f7d4a",
-    gold: "#c6a15a",
-    red_black: "linear-gradient(90deg, #1c1c1c 50%, #c23b3b 50%)",
-  };
+  const shownInk = $derived(inkColor ?? snap.color);
 
   const pick = (color: RibbonColor) => {
+    if (onInk) {
+      onInk(color);
+      return;
+    }
     if (!snap.barcode) return;
     rememberRibbonColor(snap.barcode, color);
     revision += 1;
@@ -86,9 +85,9 @@
               type="button"
               class="swatch"
               class:light={color === "white" || color === "gold"}
-              class:active={snap.color === color}
-              style:background={swatch[color]}
-              aria-pressed={snap.color === color}
+              class:active={shownInk === color}
+              style:background={inkSwatch[color]}
+              aria-pressed={shownInk === color}
               title={$tr(colorKey(color))}
               onclick={() => pick(color)}></button>
           {/each}
@@ -146,16 +145,21 @@
   .swatches {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.35rem;
-    margin-top: 0.5rem;
+    gap: 0.55rem;
+    margin-top: 0.55rem;
+    padding: 5px;
+    margin-left: -5px;
+    margin-right: -5px;
   }
 
   .swatch {
-    width: 1.35rem;
-    height: 1.35rem;
+    flex: 0 0 auto;
+    width: 2.25rem;
+    height: 2.25rem;
     border: 0;
     border-radius: 99px;
     padding: 0;
+    cursor: pointer;
     box-shadow: inset 0 0 0 1px rgba(36, 31, 26, 0.18);
   }
 

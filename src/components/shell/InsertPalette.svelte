@@ -4,12 +4,14 @@
   import type { MaterialIcon } from "$/styles/mdi_icons";
   import { tr, type TranslationKey } from "$/utils/i18n";
   import MdIcon from "$/components/basic/MdIcon.svelte";
+  import FramePicker from "$/components/designer-controls/FramePicker.svelte";
   import IconPicker from "$/components/designer-controls/IconPicker.svelte";
   import PdfImportButton from "$/components/designer-controls/PdfImportButton.svelte";
   import ZplImportButton from "$/components/designer-controls/ZplImportButton.svelte";
   import { ArUcoMarker } from "$/fabric-object/aruco";
   import { Barcode } from "$/fabric-object/barcode";
   import { QRCode } from "$/fabric-object/qrcode";
+  import type { BorderKind } from "$/utils/label_borders";
 
   interface InsertItem {
     type: OjectType;
@@ -23,8 +25,12 @@
     onTime: () => void;
     iconOpen: boolean;
     onToggleIcons: () => void;
+    frameOpen: boolean;
+    onToggleFrames: () => void;
     onIcon: (icon: MaterialIcon) => void;
     onSvgIcon: (svg: string) => void;
+    onClipart: (svg: string) => void;
+    onFrame: (kind: BorderKind) => void;
     zplImageReady: (img: Blob) => void;
     pdfImageReady: (img: HTMLCanvasElement) => void;
     canvas: fabric.Canvas | undefined;
@@ -38,8 +44,12 @@
     onTime,
     iconOpen,
     onToggleIcons,
+    frameOpen,
+    onToggleFrames,
     onIcon,
     onSvgIcon,
+    onClipart,
+    onFrame,
     zplImageReady,
     pdfImageReady,
     canvas,
@@ -131,6 +141,17 @@
     <MdIcon icon={item.icon} />
     <span>{$tr(item.label)}</span>
   </button>
+  {#if item.type === "circle"}
+    <button class="rail-item" class:active={frameOpen} type="button" aria-expanded={frameOpen} onclick={onToggleFrames}>
+      <MdIcon icon="border_outer" />
+      <span>{$tr("shell.frames")}</span>
+    </button>
+    {#if frameOpen}
+      <div class="icon-browser">
+        <FramePicker labelShape={labelProps.shape ?? "rect"} {onFrame} />
+      </div>
+    {/if}
+  {/if}
 {/each}
 
 <button class="rail-item" type="button" onclick={onTime}>
@@ -145,7 +166,11 @@
 
 {#if iconOpen}
   <div class="icon-browser">
-    <IconPicker embedded onSubmit={onIcon} onSubmitSvg={onSvgIcon} />
+    <IconPicker
+      embedded
+      onSubmit={onIcon}
+      onSubmitSvg={onSvgIcon}
+      {onClipart} />
   </div>
 {/if}
 

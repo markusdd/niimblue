@@ -1,6 +1,6 @@
 import { LabelType, type CombinedRfidInfo, type RfidInfo } from "@mmote/niimbluelib";
 import { z } from "zod";
-import type { LabelProps, LabelShape, LabelSplit, MirrorType, TailPosition } from "$/types";
+import { paperColors, type LabelProps, type LabelShape, type LabelSplit, type MirrorType, type PaperColor, type TailPosition } from "$/types";
 import { mmToPx, pxToEditableMm } from "$/utils/label_units";
 import { normalizeTurns, rotateSplit, rotateTail, swapIfOdd } from "$/utils/label_orientation";
 
@@ -31,6 +31,8 @@ const RollRecordSchema = z.object({
   labelType: z.number().optional(),
   /** Design turned clockwise relative to the roll. The millimetres stay the roll's own. */
   quarterTurns: z.number().int().min(0).max(3).optional(),
+  /** Screen color of this stock. A new roll without a memory starts white. */
+  paperColor: z.enum(paperColors).optional(),
 });
 
 export type RollRecord = z.infer<typeof RollRecordSchema>;
@@ -49,6 +51,7 @@ export type RollShapeFields = {
   mirror: MirrorType;
   labelType?: LabelType;
   quarterTurns: number;
+  paperColor?: PaperColor;
 };
 
 export type RollDetection = {
@@ -133,6 +136,7 @@ export const recordFromProps = (props: LabelProps, labelType?: number): RollReco
     mirror: props.mirror ?? "none",
     labelType,
     quarterTurns: turns,
+    ...(props.paperColor ? { paperColor: props.paperColor } : {}),
   };
 };
 
@@ -150,6 +154,7 @@ export const labelPropsFromRoll = (roll: RollShapeFields): LabelProps => {
     tailLength: roll.tailLengthMm > 0 ? mmToPx(roll.tailLengthMm) : 0,
     mirror: roll.shape === "circle" ? "none" : roll.mirror,
     quarterTurns: turns,
+    ...(roll.paperColor ? { paperColor: roll.paperColor } : {}),
   };
 };
 
@@ -180,6 +185,7 @@ const fieldsFromRecord = (record: RollRecord, fallbackDirection: "left" | "top")
     mirror: record.mirror ?? "none",
     labelType: knownLabelType(record.labelType),
     quarterTurns: normalizeTurns(record.quarterTurns),
+    ...(record.paperColor ? { paperColor: record.paperColor } : {}),
   };
 };
 
@@ -220,6 +226,7 @@ export const detectLoadedRoll = (
     mirror: base?.mirror ?? "none",
     labelType: paper?.labelType ?? base?.labelType,
     quarterTurns: base?.quarterTurns ?? 0,
+    ...(base?.paperColor ? { paperColor: base.paperColor } : {}),
   };
   return { key, remaining, roll };
 };

@@ -21,19 +21,31 @@ export class UndoRedo {
     });
   }
   async undo() {
-    if (this.index > 0 && this.index < this.buf.length) {
-      await this.onLabelUpdate?.(this.buf[this.index - 1]);
-      this.index--;
+    if (this.index <= 0 || this.index >= this.buf.length) {
+      this.updateState();
+      return;
     }
-    this.updateState();
+    // Move first, so a snapshot taken while the canvas reloads branches
+    // from the restored step instead of appending past the undone frames.
+    this.index--;
+    try {
+      await this.onLabelUpdate?.(this.buf[this.index]);
+    } finally {
+      this.updateState();
+    }
   }
 
   async redo() {
-    if (this.index < this.buf.length - 1) {
-      await this.onLabelUpdate?.(this.buf[this.index + 1]);
-      this.index++;
+    if (this.index >= this.buf.length - 1) {
+      this.updateState();
+      return;
     }
-    this.updateState();
+    this.index++;
+    try {
+      await this.onLabelUpdate?.(this.buf[this.index]);
+    } finally {
+      this.updateState();
+    }
   }
 
   push(fabricCanvas: fabric.Canvas, labelProps: LabelProps) {
@@ -41,7 +53,10 @@ export class UndoRedo {
       return;
     }
 
-    if (this.index !== this.buf.length - 1 && this.index > 0 && this.index <= this.buf.length) {
+    // A new edit discards the redo tail, including when undo went all the
+    // way back to the first snapshot. Leaving that tail made removed frames
+    // return on the next undo.
+    if (this.index < this.buf.length - 1) {
       this.buf = this.buf.slice(0, this.index + 1);
     }
 
