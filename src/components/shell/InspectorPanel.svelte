@@ -1,6 +1,6 @@
 <script lang="ts">
   import * as fabric from "fabric";
-  import type { LabelProps } from "$/types";
+  import type { FabricJson, LabelPreset, LabelProps, LabelShape } from "$/types";
   import { tr } from "$/utils/i18n";
   import { ArUcoMarker } from "$/fabric-object/aruco";
   import { Barcode } from "$/fabric-object/barcode";
@@ -20,6 +20,10 @@
     labelProps: LabelProps;
     onUpdateLabelProps: (props: LabelProps) => void;
     onRotate: () => void;
+    loadedRoll?: { widthMm: number; heightMm: number; tailMm: number; shape: LabelShape };
+    onUseLoadedRoll?: () => void;
+    getCanvas?: () => FabricJson;
+    onPresetSelected?: (preset: LabelPreset) => void;
     selectedObject: fabric.FabricObject | undefined;
     selectedCount: number;
     editRevision: number;
@@ -32,6 +36,10 @@
     labelProps,
     onUpdateLabelProps,
     onRotate,
+    loadedRoll,
+    onUseLoadedRoll,
+    getCanvas,
+    onPresetSelected,
     selectedObject,
     selectedCount,
     editRevision,
@@ -65,7 +73,15 @@
   <RibbonStatus
     inkColor={labelProps.inkColor}
     onInk={(color) => onUpdateLabelProps({ ...labelProps, inkColor: color })} />
-  <LabelPropsEditor embedded {labelProps} onChange={onUpdateLabelProps} {onRotate} />
+  <LabelPropsEditor
+    embedded
+    {labelProps}
+    onChange={onUpdateLabelProps}
+    {onRotate}
+    {loadedRoll}
+    {onUseLoadedRoll}
+    {getCanvas}
+    {onPresetSelected} />
 </div>
 
 <div class="inspector-tools" hidden={tab !== "selection"}>

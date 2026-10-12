@@ -1,8 +1,10 @@
 <script lang="ts">
   import {
     inkColors,
+    FabricJsonSchema,
     LabelPresetSchema,
     paperColors,
+    type FabricJson,
     type InkColor,
     type LabelPreset,
     type LabelProps,
@@ -33,10 +35,22 @@
     labelProps: LabelProps;
     onChange: (newProps: LabelProps) => void;
     onRotate?: () => void;
+    loadedRoll?: { widthMm: number; heightMm: number; tailMm: number; shape: LabelShape };
+    onUseLoadedRoll?: () => void;
+    /** Current design, including objects. Used when saving a template. */
+    getCanvas?: () => FabricJson;
+    /** Loads a template that stored its own objects. */
+    onPresetSelected?: (preset: LabelPreset) => void;
     embedded?: boolean;
   }
 
-  let { labelProps, onChange, onRotate, embedded = false }: Props = $props();
+  let { labelProps, onChange, onRotate, loadedRoll, onUseLoadedRoll, getCanvas, onPresetSelected, embedded = false }: Props = $props();
+
+  const shapeKey = (value: LabelShape | undefined): TranslationKey => {
+    if (value === "circle") return "shell.shape.circle";
+    if (value === "rounded_rect") return "shell.shape.rounded_rect";
+    return "shell.shape.rect";
+  };
 
   const tailPositions: TailPosition[] = ["right", "bottom", "left", "top"];
   const printDirections: PrintDirection[] = ["left", "top"];
@@ -133,23 +147,27 @@
 
   const onLabelPresetSelected = (index: number) => {
     const preset = labelPresets[index];
+    if (preset === undefined) return;
 
-    if (preset !== undefined) {
-      prevUnit = preset.unit;
-      unit = preset.unit;
-      printDirection = preset.printDirection;
-      width = preset.width;
-      height = preset.height;
-      title = preset.title ?? "";
-      shape = preset.shape ?? "rect";
-      split = preset.split ?? "none";
-      splitParts = preset.splitParts ?? 2;
-      tailPos = preset.tailPos ?? "right";
-      tailLength = preset.tailLength ?? 0;
-      mirror = preset.mirror ?? "none";
+    prevUnit = preset.unit;
+    unit = preset.unit;
+    printDirection = preset.printDirection;
+    width = preset.width;
+    height = preset.height;
+    title = preset.title ?? "";
+    shape = preset.shape ?? "rect";
+    split = preset.split ?? "none";
+    splitParts = preset.splitParts ?? 2;
+    tailPos = preset.tailPos ?? "right";
+    tailLength = preset.tailLength ?? 0;
+    mirror = preset.mirror ?? "none";
+
+    if (preset.canvas && onPresetSelected) {
+      onPresetSelected(preset);
+      return;
     }
 
-    applyWith(0);
+    applyWith(preset.quarterTurns ?? 0);
   };
 
   const onLabelPresetDelete = (idx: number) => {
@@ -160,25 +178,30 @@
   };
 
   const onLabelPresetAdd = () => {
+    const snapshot = getCanvas ? FabricJsonSchema.parse(getCanvas()) : undefined;
     const newPreset: LabelPreset = {
-      printDirection,
-      unit,
-      width,
-      height,
-      title,
-      shape,
-      split,
-      splitParts,
-      tailPos,
-      tailLength,
-      mirror,
+      printDirection: labelProps.printDirection,
+      unit: "mm",
+      width: pxToEditableMm(labelProps.size.width),
+      height: pxToEditableMm(labelProps.size.height),
+      title: title?.trim() || undefined,
+      shape: labelProps.shape ?? "rect",
+      split: labelProps.shape === "circle" ? "none" : (labelProps.split ?? "none"),
+      splitParts: labelProps.splitParts ?? 2,
+      tailPos: labelProps.tailPos ?? "right",
+      tailLength: labelProps.tailLength ? pxToEditableMm(labelProps.tailLength) : 0,
+      mirror: labelProps.shape === "circle" ? "none" : (labelProps.mirror ?? "none"),
+      quarterTurns: normalizeTurns(labelProps.quarterTurns),
+      ...(labelProps.paperColor ? { paperColor: labelProps.paperColor } : {}),
+      ...(snapshot ? { canvas: snapshot, savedAt: Date.now() } : {}),
     };
     const newPresets = [...labelPresets, newPreset];
     try {
       LocalStoragePersistence.saveLabelPresets(newPresets);
       labelPresets = newPresets;
     } catch (e) {
-      Toasts.zodErrors(e, "Presets save error:");
+      if (e instanceof z.ZodError) Toasts.zodErrors(e, "Presets save error:");
+      else Toasts.error(e);
     }
   };
 
@@ -352,6 +375,20 @@
         {/if}
         <button class="btn btn-sm" onclick={fillWithCurrentParams}><MdIcon icon="arrow_downward" /></button>
       </div>
+
+      {#if loadedRoll && onUseLoadedRoll}
+        <button type="button" class="loaded-roll" title={$tr("shell.roll_use_hint")} onclick={onUseLoadedRoll}>
+          <MdIcon icon="label" />
+          <span class="loaded-roll-copy">
+            <span class="loaded-roll-title">{$tr("shell.roll_use")}</span>
+            <span class="loaded-roll-meta">
+              {formatMmValue(loadedRoll.widthMm)} × {formatMmValue(loadedRoll.heightMm)}
+              {#if loadedRoll.tailMm > 0}+ {formatMmValue(loadedRoll.tailMm)}{/if}
+              {$tr("params.label.mm")} · {$tr(shapeKey(loadedRoll.shape))}
+            </span>
+          </span>
+        </button>
+      {/if}
 
       <LabelPresetsBrowser
         class="mb-1"
@@ -560,6 +597,41 @@
 
   .cursor-help {
     cursor: help;
+  }
+
+  .loaded-roll {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    width: 100%;
+    margin: 0 0 0.55rem;
+    padding: 0.45rem 0.65rem;
+    border: 1px solid #6d829c;
+    border-radius: 8px;
+    background: #e7eef5;
+    color: #1c2836;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .loaded-roll:hover {
+    background: #d5dee9;
+  }
+
+  .loaded-roll-copy {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .loaded-roll-title {
+    font-weight: 650;
+    font-size: 0.84rem;
+  }
+
+  .loaded-roll-meta {
+    color: #3f4d5c;
+    font-size: 0.75rem;
   }
 
   .color-block {

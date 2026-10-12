@@ -279,6 +279,8 @@
     "shell.roll_loaded": "Rolle erkannt:",
     "shell.roll_unknown": "Eine Rolle liegt ein, aber der Drucker hat die Größe nicht gemeldet. Stell die Größe einmal ein, dann merkt sich die Seite diese Rolle.",
     "shell.roll_unknown_short": "Rollengröße unbekannt",
+    "shell.roll_use": "Geladene Rolle nehmen",
+    "shell.roll_use_hint": "Stell den Entwurf wieder auf die Rolle im Drucker.",
     "shell.rotate": "Drehen",
     "shell.rotate_hint": "Dreht den Entwurf um 90°. Die Arbeitskante bleibt, wo der Drucker einzieht.",
     "shell.ribbon": "Farbband",

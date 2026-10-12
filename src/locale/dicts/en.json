@@ -279,6 +279,8 @@
     "shell.roll_loaded": "Loaded roll:",
     "shell.roll_unknown": "A roll is loaded, but the printer did not report its size. Set the size once and this page remembers the roll.",
     "shell.roll_unknown_short": "Roll size unknown",
+    "shell.roll_use": "Use loaded roll",
+    "shell.roll_use_hint": "Switch the editor back to the label in the printer.",
     "shell.rotate": "Rotate",
     "shell.rotate_hint": "Turns the design 90°. The working edge stays where the printer feeds.",
     "shell.ribbon": "Ribbon",

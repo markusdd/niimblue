@@ -1,4 +1,4 @@
-import type { LabelPreset } from "$/types";
+import type { LabelPreset, LabelProps } from "$/types";
 
 /**
  * Raster used by the editor. A label is a physical size; this density only
@@ -88,25 +88,48 @@ export function normalizeLabelPresets(presets: LabelPreset[]): LabelPreset[] {
       preset.tailPos ?? "right",
       preset.mirror ?? "none",
     ].join("|");
-    const key = title ? `${geometry}|${title}` : geometry;
+    const designKey = preset.savedAt
+      ? String(preset.savedAt)
+      : preset.canvas
+        ? `c${preset.canvas.objects.length}:${JSON.stringify(preset.canvas).length}`
+        : "";
+    const key = `${geometry}|${title ?? ""}|${designKey}`;
     if (seen.has(key)) {
       continue;
     }
     seen.add(key);
+    const rest = { ...preset };
+    delete rest.dpmm;
     result.push({
+      ...rest,
       width: mm.width,
       height: mm.height,
       unit: "mm",
-      printDirection: preset.printDirection,
       title,
-      shape: preset.shape,
-      split: preset.split,
-      splitParts: preset.splitParts,
-      tailPos: preset.tailPos,
       tailLength: mm.tail,
-      mirror: preset.mirror,
     });
   }
 
   return result;
+}
+
+/** Paper described by a preset card, in design pixels. A saved canvas is applied separately. */
+export function labelPropsFromPreset(preset: LabelPreset): LabelProps {
+  const mm = presetMillimeters(preset);
+  const shape = preset.shape ?? "rect";
+  return {
+    printDirection: preset.printDirection,
+    size: {
+      width: mmToPx(mm.width),
+      height: mmToPx(mm.height),
+    },
+    shape,
+    split: shape === "circle" ? "none" : (preset.split ?? "none"),
+    splitParts: preset.splitParts ?? 2,
+    tailPos: preset.tailPos ?? "right",
+    tailLength: mm.tail > 0 ? mmToPx(mm.tail) : 0,
+    mirror: shape === "circle" ? "none" : (preset.mirror ?? "none"),
+    quarterTurns: preset.quarterTurns ?? 0,
+    ...(preset.paperColor ? { paperColor: preset.paperColor } : {}),
+  };
 }

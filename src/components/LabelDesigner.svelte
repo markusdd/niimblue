@@ -8,6 +8,7 @@
   import {
     type ExportedLabelTemplate,
     type FabricJson,
+    type LabelPreset,
     type LabelProps,
     type MoveDirection,
     type OjectType,
@@ -33,7 +34,7 @@
   import RibbonStatus from "$/components/shell/RibbonStatus.svelte";
   import { normalizeTurns, rotatePointCw, rotateSplit, rotateTail } from "$/utils/label_orientation";
   import { LabelType, Utils } from "@mmote/niimbluelib";
-  import { formatMm, formatMmValue } from "$/utils/label_units";
+  import { formatMm, formatMmValue, labelPropsFromPreset } from "$/utils/label_units";
   import { borderSvg, type BorderKind } from "$/utils/label_borders";
   import { svgForPrint } from "$/data/clipart";
   import {
@@ -182,8 +183,20 @@
     const tag = info.labelRfidInfo;
     const key = tag?.tagPresent ? rollIdentity(tag) : undefined;
     if (!key) return;
-    const labelType = paperMillimetres(info)?.labelType ?? recallRoll(key)?.labelType;
-    rememberRoll(key, recordFromProps(props, labelType));
+    const paper = paperMillimetres(info);
+    const record = recordFromProps(props, paper?.labelType ?? recallRoll(key)?.labelType);
+    // A preset for another label must not replace the roll that is loaded.
+    if (paper) {
+      const close = (a: number, b: number) => Math.abs(a - b) < 0.35;
+      if (
+        !close(record.widthMm, paper.widthMm) ||
+        !close(record.heightMm, paper.heightMm) ||
+        !close(record.tailLengthMm ?? 0, paper.tailLengthMm)
+      ) {
+        return;
+      }
+    }
+    rememberRoll(key, record);
   };
 
   const rotateLabel = () => {
@@ -246,6 +259,15 @@
 
   const onLoadRequested = (label: ExportedLabelTemplate) => {
     loadLabelData(label).then(() => undo.push(fabricCanvas!, labelProps));
+  };
+
+  /** A template card replaces the design. A size card never reaches this. */
+  const applyPreset = (preset: LabelPreset) => {
+    if (!preset.canvas || !fabricCanvas) return;
+    const label = labelPropsFromPreset(preset);
+    if (!preset.paperColor && labelProps.paperColor) label.paperColor = labelProps.paperColor;
+    if (labelProps.inkColor) label.inkColor = labelProps.inkColor;
+    onLoadRequested({ label, canvas: preset.canvas });
   };
 
   const zplImageReady = async (img: Blob) => {
@@ -694,6 +716,34 @@
       renderOnFontsChanged();
     }
   });
+
+  // labelProps is read so a remembered shape is picked up after an edit.
+  // The RFID store does not change when roll memory is written.
+  const printerRoll = $derived.by(() => {
+    void labelProps;
+    if ($connectionState !== "connected") return undefined;
+    const direction = $printerMeta?.printDirection === "left" ? "left" : "top";
+    const detected = detectLoadedRoll($rfidInfo, direction);
+    if (!detected?.roll) return undefined;
+    return {
+      props: labelPropsFromRoll(detected.roll),
+      widthMm: detected.roll.widthMm,
+      heightMm: detected.roll.heightMm,
+      tailMm: detected.roll.tailLengthMm,
+      shape: detected.roll.shape,
+    };
+  });
+
+  const rollDiffers = $derived(!!printerRoll && !sameLabelGeometry(labelProps, printerRoll.props));
+
+  const useLoadedRoll = () => {
+    const roll = printerRoll;
+    if (!roll) return;
+    const next: LabelProps = { ...roll.props };
+    if (labelProps.inkColor) next.inkColor = labelProps.inkColor;
+    if (sameLabelGeometry(labelProps, next) && (labelProps.paperColor ?? "white") === (next.paperColor ?? "white")) return;
+    onUpdateLabelProps(next);
+  };
 </script>
 
 <svelte:window bind:innerWidth={windowWidth} onkeydown={onKeyDown} onpaste={onPaste} />
@@ -801,6 +851,10 @@
         {labelProps}
         onUpdateLabelProps={onUpdateLabelProps}
         onRotate={rotateLabel}
+        loadedRoll={rollDiffers ? printerRoll : undefined}
+        onUseLoadedRoll={useLoadedRoll}
+        getCanvas={getCanvasForPreview}
+        onPresetSelected={applyPreset}
         {selectedObject}
         {selectedCount}
         {editRevision}
@@ -823,12 +877,21 @@
     {#if rollStatus === "unknown"}
       <span>{$tr("shell.roll_unknown_short")}</span>
     {:else if rollStatus}
-      <span>
-        {$tr("shell.roll")} {formatMmValue(rollStatus.widthMm)} × {formatMmValue(rollStatus.heightMm)}
-        {#if rollStatus.tailMm > 0}+ {formatMmValue(rollStatus.tailMm)}{/if}
-        mm{#if rollStatus.remaining !== undefined}
-          · {rollStatus.remaining} {$tr("shell.roll_left")}{/if}
-      </span>
+      {#if rollDiffers}
+        <button class="status-roll" type="button" title={$tr("shell.roll_use_hint")} onclick={useLoadedRoll}>
+          {$tr("shell.roll")} {formatMmValue(rollStatus.widthMm)} × {formatMmValue(rollStatus.heightMm)}
+          {#if rollStatus.tailMm > 0}+ {formatMmValue(rollStatus.tailMm)}{/if}
+          mm{#if rollStatus.remaining !== undefined}
+            · {rollStatus.remaining} {$tr("shell.roll_left")}{/if}
+        </button>
+      {:else}
+        <span>
+          {$tr("shell.roll")} {formatMmValue(rollStatus.widthMm)} × {formatMmValue(rollStatus.heightMm)}
+          {#if rollStatus.tailMm > 0}+ {formatMmValue(rollStatus.tailMm)}{/if}
+          mm{#if rollStatus.remaining !== undefined}
+            · {rollStatus.remaining} {$tr("shell.roll_left")}{/if}
+        </span>
+      {/if}
     {/if}
     <span>{shapeLabel(labelProps.shape)}</span>
     <span>

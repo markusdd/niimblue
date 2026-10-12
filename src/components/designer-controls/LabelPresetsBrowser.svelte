@@ -66,6 +66,9 @@
       <div class="meta">
         {#if deleteIndex !== idx}
           <span class="name">{caption(item)}</span>
+          {#if item.canvas}
+            <span class="count" title={caption(item)}>{item.canvas.objects.length}</span>
+          {/if}
           <button
             type="button"
             class="icon-btn"
@@ -161,6 +164,18 @@
     font-size: 0.72rem;
     line-height: 1.2;
     color: #241f1a;
+  }
+
+  .count {
+    flex: 0 0 auto;
+    min-width: 1.15rem;
+    padding: 0 0.28rem;
+    border-radius: 99px;
+    background: #d5dee9;
+    color: #1c2836;
+    font-size: 0.68rem;
+    line-height: 1.35;
+    text-align: center;
   }
 
   .icon-btn {

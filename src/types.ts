@@ -34,6 +34,11 @@ export const FabricObjectSchema = z.custom<fabric.FabricObject>((val: any): bool
   return typeof val === "object";
 });
 
+export const FabricJsonSchema = z.object({
+  version: z.string(),
+  objects: z.array(FabricObjectSchema),
+});
+
 export const LabelPropsSchema = z.object({
   printDirection: z.enum(["left", "top"]),
   size: z.object({
@@ -68,11 +73,12 @@ export const LabelPresetSchema = z.object({
   tailPos: z.enum(["right", "bottom", "left", "top"]).default("right").optional(),
   tailLength: z.number().default(0).optional(),
   mirror: z.enum(["none", "copy", "flip"]).default("none").optional(),
-});
-
-export const FabricJsonSchema = z.object({
-  version: z.string(),
-  objects: z.array(FabricObjectSchema),
+  /** Design rotation saved with a template. Size cards omit it. */
+  quarterTurns: z.number().int().min(0).max(3).optional(),
+  paperColor: z.enum(paperColors).optional(),
+  /** Present when the card is a saved design, not just a paper size. */
+  canvas: FabricJsonSchema.optional(),
+  savedAt: z.number().positive().optional(),
 });
 
 export const ExportedLabelTemplateSchema = z.object({
