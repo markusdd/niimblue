@@ -344,8 +344,8 @@ body {
   min-height: 0;
   overflow: auto;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: flex-start;
   padding: 1.5rem;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.35), transparent 80px),
@@ -356,9 +356,7 @@ body {
   background: transparent;
   border: 0;
   box-shadow: none;
-  max-width: 100%;
-  max-height: 100%;
-  overflow: visible;
+  margin: auto;
 }
 
 .canvas-sheet .canvas-container {

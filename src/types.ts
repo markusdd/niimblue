@@ -79,6 +79,8 @@ export const LabelPresetSchema = z.object({
   /** Present when the card is a saved design, not just a paper size. */
   canvas: FabricJsonSchema.optional(),
   savedAt: z.number().positive().optional(),
+  /** Small picture of the label, so the card can be recognized. */
+  thumbnail: z.string().optional(),
 });
 
 export const ExportedLabelTemplateSchema = z.object({

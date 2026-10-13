@@ -65,49 +65,63 @@ function presetMillimeters(preset: LabelPreset): { width: number; height: number
   };
 }
 
+const presetNumber = (value: number): string => String(Math.round(value * 100) / 100);
+
+/**
+ * Cards with the same name are one preset. A title matches regardless of
+ * size. An untitled design matches another untitled design of the same size.
+ * A size card, with no design stored, stays separate from those.
+ */
+export function presetIdentity(preset: LabelPreset): string {
+  const title = preset.title?.trim();
+  if (title && !DPI_TITLE.test(title)) return `name:${title.toLocaleLowerCase()}`;
+  const mm = presetMillimeters(preset);
+  const shape = preset.shape ?? "rect";
+  if (preset.canvas) return `design:${presetNumber(mm.width)}x${presetNumber(mm.height)}:${shape}`;
+  return [
+    "size",
+    presetNumber(mm.width),
+    presetNumber(mm.height),
+    presetNumber(mm.tail),
+    preset.printDirection,
+    shape,
+    preset.split ?? "none",
+    preset.splitParts ?? 2,
+    preset.tailPos ?? "right",
+    preset.mirror ?? "none",
+  ].join("|");
+}
+
 /**
  * Presets are physical labels. Older copies stored the same size once per
- * printer density; those collapse into one millimetre preset. A preset with
- * its own title is kept even when the size matches another.
+ * printer density; those collapse into one millimetre preset. The same name
+ * also collapses, and the later copy wins so a re-save replaces the card.
  */
 export function normalizeLabelPresets(presets: LabelPreset[]): LabelPreset[] {
-  const seen = new Set<string>();
+  const indexByKey = new Map<string, number>();
   const result: LabelPreset[] = [];
 
   for (const preset of presets) {
     const mm = presetMillimeters(preset);
-    const title = preset.title && DPI_TITLE.test(preset.title) ? undefined : preset.title;
-    const geometry = [
-      mm.width,
-      mm.height,
-      mm.tail,
-      preset.printDirection,
-      preset.shape ?? "rect",
-      preset.split ?? "none",
-      preset.splitParts ?? 2,
-      preset.tailPos ?? "right",
-      preset.mirror ?? "none",
-    ].join("|");
-    const designKey = preset.savedAt
-      ? String(preset.savedAt)
-      : preset.canvas
-        ? `c${preset.canvas.objects.length}:${JSON.stringify(preset.canvas).length}`
-        : "";
-    const key = `${geometry}|${title ?? ""}|${designKey}`;
-    if (seen.has(key)) {
-      continue;
-    }
-    seen.add(key);
+    const title = preset.title && !DPI_TITLE.test(preset.title) ? preset.title.trim() || undefined : undefined;
     const rest = { ...preset };
     delete rest.dpmm;
-    result.push({
+    const normalized: LabelPreset = {
       ...rest,
       width: mm.width,
       height: mm.height,
       unit: "mm",
       title,
       tailLength: mm.tail,
-    });
+    };
+    const key = presetIdentity(normalized);
+    const existing = indexByKey.get(key);
+    if (existing === undefined) {
+      indexByKey.set(key, result.length);
+      result.push(normalized);
+    } else {
+      result[existing] = normalized;
+    }
   }
 
   return result;

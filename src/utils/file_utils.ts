@@ -11,8 +11,10 @@ import {
 import { OBJECT_DEFAULTS, OBJECT_DEFAULTS_VECTOR, THUMBNAIL_HEIGHT, THUMBNAIL_QUALITY } from "$/defaults";
 import { z } from "zod";
 import { CustomCanvas } from "$/fabric-object/custom_canvas";
+import { labelPropsFromPreset } from "$/utils/label_units";
 import { Capacitor } from "@capacitor/core";
 import { CanvasUtils } from "$/utils/canvas_utils";
+import { prepareObjectScale, preventCollapsedSize } from "$/fabric-object/scale_mode";
 import { LocalStoragePersistence } from "./persistence";
 import { csvData, loadedFonts } from "$/stores";
 import { get } from "svelte/store";
@@ -145,13 +147,59 @@ export class FileUtils {
     FileUtils.downloadBase64Web(filename, mime, base64Data);
   }
 
+  private static labelPixels(canvas: fabric.Canvas) {
+    if (canvas instanceof CustomCanvas) return canvas.labelBitmapRect();
+    return { left: 0, top: 0, width: canvas.width ?? 1, height: canvas.height ?? 1 };
+  }
+
+  /** Picture of the label only, without the pasteboard around it. */
+  static labelThumbnail(canvas: fabric.Canvas, height = 96): string {
+    const page = FileUtils.labelPixels(canvas);
+    return canvas.toDataURL({
+      format: "png",
+      multiplier: Math.min(2, height / (page.height || 1)),
+      left: page.left,
+      top: page.top,
+      width: page.width,
+      height: page.height,
+    });
+  }
+
+  /** Draw a stored preset off to the side and return its label picture. */
+  static async renderPresetThumbnail(preset: LabelPreset): Promise<string | undefined> {
+    if (!preset.canvas) return undefined;
+    const props = labelPropsFromPreset(preset);
+    const canvas = new CustomCanvas(undefined, {
+      width: Math.max(1, props.size.width),
+      height: Math.max(1, props.size.height),
+    });
+    const wrapper = canvas.wrapperEl;
+    if (wrapper) {
+      wrapper.style.position = "fixed";
+      wrapper.style.left = "-10000px";
+      wrapper.style.top = "0";
+      wrapper.setAttribute("aria-hidden", "true");
+    }
+    try {
+      canvas.setCustomBackground(true);
+      canvas.setHighlightMirror(false);
+      canvas.setLabelProps(props);
+      await FileUtils.loadCanvasState(canvas, preset.canvas);
+      canvas.renderAll();
+      return FileUtils.labelThumbnail(canvas);
+    } finally {
+      canvas.dispose();
+    }
+  }
+
   static makeExportedLabel(canvas: fabric.Canvas, labelProps: LabelProps, includeCsv: boolean): ExportedLabelTemplate {
+    const page = FileUtils.labelPixels(canvas);
     const thumbnailBase64: string = canvas.toDataURL({
-      width: canvas.width,
-      height: canvas.height,
-      left: 0,
-      top: 0,
-      multiplier: THUMBNAIL_HEIGHT / (canvas.height || 1),
+      width: page.width,
+      height: page.height,
+      left: page.left,
+      top: page.top,
+      multiplier: THUMBNAIL_HEIGHT / (page.height || 1),
       quality: THUMBNAIL_QUALITY,
       format: "jpeg",
     });
@@ -189,11 +237,12 @@ export class FileUtils {
   static saveCanvasAsPng(canvas: fabric.Canvas) {
     const timestamp = FileUtils.timestamp();
 
+    const page = FileUtils.labelPixels(canvas);
     const url = canvas.toDataURL({
-      width: canvas.width,
-      height: canvas.height,
-      left: 0,
-      top: 0,
+      width: page.width,
+      height: page.height,
+      left: page.left,
+      top: page.top,
       format: "png",
       multiplier: 1,
     });
@@ -282,6 +331,8 @@ export class FileUtils {
     await canvas.loadFromJSON(state, (_, obj) => {
       if (obj instanceof fabric.FabricObject) {
         obj.set({ snapAngle: OBJECT_DEFAULTS.snapAngle });
+        prepareObjectScale(obj);
+        preventCollapsedSize(obj);
         CanvasUtils.fixFabricObjectScale(obj);
 
         if (obj instanceof fabric.Line) {
@@ -315,6 +366,7 @@ export class FileUtils {
     }
 
     if (canvas instanceof CustomCanvas) {
+      canvas.fitWorkspace();
       canvas.virtualZoom(canvas.getVirtualZoom());
     }
 

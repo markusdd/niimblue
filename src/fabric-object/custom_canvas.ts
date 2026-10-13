@@ -1,8 +1,10 @@
 import * as fabric from "fabric";
 import { DEFAULT_LABEL_PROPS, GRID_SIZE } from "$/defaults";
 import type { LabelProps } from "$/types";
+import { isFrameGroup, prepareObjectScale } from "$/fabric-object/scale_mode";
 import { inkPaint, isBlackInk, paperCss } from "$/utils/label_colors";
 import { workingEdge } from "$/utils/label_orientation";
+import { mmToPx } from "$/utils/label_units";
 
 type LabelBounds = {
   startX: number;
@@ -79,6 +81,10 @@ export class CustomCanvas extends fabric.Canvas {
   private highlightMirror: boolean = true;
   private gridEnabled: boolean = false;
   private virtualZoomRatio: number = 1;
+  private fittingWorkspace = false;
+  private workspaceQueued = false;
+  /** Pasteboard around the paper so objects can sit outside the label. */
+  private readonly workspacePad = mmToPx(4);
   onZoomChange?: (zoom: number) => void;
 
   constructor(
@@ -88,6 +94,34 @@ export class CustomCanvas extends fabric.Canvas {
     super(el, options);
     this.setupZoomAndPan();
     this.preserveObjectStacking = true;
+    // Corner handles resize freely. Shift keeps the ratio. Circles and icons lock it.
+    this.uniformScaling = false;
+    this.on("object:added", (event) => {
+      if (event.target) prepareObjectScale(event.target);
+      // Position updates in the same turn, after add, have to land first.
+      this.queueWorkspace();
+    });
+    this.on("object:removed", () => this.queueWorkspace());
+    this.on("object:modified", () => this.queueWorkspace());
+  }
+
+  /**
+   * A frame's empty middle is not a target, even when an older preset never
+   * stored perPixelTargetFind. The stroke still is. Keep the flag so the next
+   * save does not grow the hit box back.
+   */
+  override _checkTarget(obj: fabric.FabricObject, pointer: fabric.Point): boolean {
+    if (isFrameGroup(obj)) obj.perPixelTargetFind = true;
+    return super._checkTarget(obj, pointer);
+  }
+
+  private queueWorkspace() {
+    if (this.workspaceQueued) return;
+    this.workspaceQueued = true;
+    queueMicrotask(() => {
+      this.workspaceQueued = false;
+      this.fitWorkspace();
+    });
   }
 
   private setupZoomAndPan() {
@@ -226,6 +260,80 @@ export class CustomCanvas extends fabric.Canvas {
     this.virtualZoom(1);
   }
 
+  private labelSize() {
+    const width = this.labelProps.size?.width;
+    const height = this.labelProps.size?.height;
+    return {
+      width: width && width > 0 ? width : (this.width ?? 1),
+      height: height && height > 0 ? height : (this.height ?? 1),
+    };
+  }
+
+  /** Paper rectangle in canvas pixels, after the pasteboard offset. */
+  labelBitmapRect() {
+    const v = this.viewportTransform ?? [1, 0, 0, 1, 0, 0];
+    const size = this.labelSize();
+    return {
+      left: v[4] || 0,
+      top: v[5] || 0,
+      width: size.width,
+      height: size.height,
+    };
+  }
+
+  /**
+   * Grow the canvas past the label so objects and handles outside the paper
+   * stay visible. Print preview leaves this alone.
+   */
+  fitWorkspace() {
+    if (!this.customBackground || this.fittingWorkspace) return;
+    const labelW = this.labelProps.size?.width ?? 0;
+    const labelH = this.labelProps.size?.height ?? 0;
+    if (labelW < 1 || labelH < 1) return;
+    this.fittingWorkspace = true;
+    try {
+      this.fitWorkspaceBody(labelW, labelH);
+    } finally {
+      this.fittingWorkspace = false;
+    }
+  }
+
+  private fitWorkspaceBody(labelW: number, labelH: number) {
+
+    let minX = 0;
+    let minY = 0;
+    let maxX = labelW;
+    let maxY = labelH;
+    for (const obj of this.getObjects()) {
+      obj.setCoords();
+      const box = obj.getBoundingRect();
+      minX = Math.min(minX, box.left);
+      minY = Math.min(minY, box.top);
+      maxX = Math.max(maxX, box.left + box.width);
+      maxY = Math.max(maxY, box.top + box.height);
+    }
+
+    const pad = this.workspacePad;
+    const offsetX = Math.max(pad, Math.ceil(-minX + pad));
+    const offsetY = Math.max(pad, Math.ceil(-minY + pad));
+    const width = Math.ceil(offsetX + Math.max(labelW, maxX) + pad);
+    const height = Math.ceil(offsetY + Math.max(labelH, maxY) + pad);
+    const current = this.viewportTransform ?? [1, 0, 0, 1, 0, 0];
+    if (
+      Math.abs((this.width ?? 0) - width) < 1 &&
+      Math.abs((this.height ?? 0) - height) < 1 &&
+      Math.abs((current[4] ?? 0) - offsetX) < 1 &&
+      Math.abs((current[5] ?? 0) - offsetY) < 1
+    ) {
+      return;
+    }
+
+    const zoom = this.virtualZoomRatio;
+    this.setDimensions({ width, height });
+    this.setViewportTransform([1, 0, 0, 1, offsetX, offsetY]);
+    this.virtualZoom(zoom);
+  }
+
   setLabelProps(value: LabelProps) {
     this.labelProps = value;
     this.requestRenderAll();
@@ -251,8 +359,7 @@ export class CustomCanvas extends fabric.Canvas {
 
   /** Outline of the printable paper. Corners outside this stay empty. */
   private tracePaperPath(ctx: CanvasRenderingContext2D) {
-    const width = this.width ?? 1;
-    const height = this.height ?? 1;
+    const { width, height } = this.labelSize();
     ctx.beginPath();
 
     if (this.labelProps.shape === "circle") {
@@ -297,6 +404,7 @@ export class CustomCanvas extends fabric.Canvas {
     }
 
     const bb = this.getLabelBounds();
+    const label = this.labelSize();
     const roundRadius = this.labelProps.shape === "rounded_rect" ? this.paperRadius() : 0;
     ctx.fillStyle = this.GRAY;
     ctx.beginPath();
@@ -305,7 +413,7 @@ export class CustomCanvas extends fabric.Canvas {
       ctx.rect(
         bb.endX - roundRadius,
         bb.endY / 2 - this.TAIL_WIDTH / 2,
-        (this.width ?? 0) - bb.endX + roundRadius,
+        label.width - bb.endX + roundRadius,
         this.TAIL_WIDTH,
       );
     } else if (this.labelProps.tailPos === "bottom") {
@@ -313,7 +421,7 @@ export class CustomCanvas extends fabric.Canvas {
         bb.endX / 2 - this.TAIL_WIDTH / 2,
         bb.endY - roundRadius,
         this.TAIL_WIDTH,
-        (this.height ?? 0) - bb.endY + roundRadius,
+        label.height - bb.endY + roundRadius,
       );
     } else if (this.labelProps.tailPos === "left") {
       ctx.rect(0, bb.endY / 2 - this.TAIL_WIDTH / 2, bb.startX + roundRadius, this.TAIL_WIDTH);
@@ -325,8 +433,7 @@ export class CustomCanvas extends fabric.Canvas {
   }
 
   private drawPrintStart(ctx: CanvasRenderingContext2D) {
-    const width = this.width ?? 1;
-    const height = this.height ?? 1;
+    const { width, height } = this.labelSize();
     const bb = this.getLabelBounds();
     // Sit inside the paper. A stroke on the clip boundary disappears,
     // which used to hide the mark once it moved onto a side edge.
@@ -394,8 +501,9 @@ export class CustomCanvas extends fabric.Canvas {
 
   /** Get label bounds without tail */
   getLabelBounds(): LabelBounds {
-    let endX = this.width ?? 1;
-    let endY = this.height ?? 1;
+    const size = this.labelSize();
+    let endX = size.width;
+    let endY = size.height;
     let startX = 0;
     let startY = 0;
 
@@ -467,6 +575,8 @@ export class CustomCanvas extends fabric.Canvas {
     }
 
     ctx.save();
+    const v = this.viewportTransform;
+    if (v) ctx.transform(v[0], v[1], v[2], v[3], v[4], v[5]);
 
     // Print preview wants a solid white bitmap. The editor leaves the
     // corners outside a round label empty so the desk shows through.
@@ -528,21 +638,8 @@ export class CustomCanvas extends fabric.Canvas {
     const touched = paint ? tintBlackInk(objects, paint) : [];
 
     try {
-      const clipToPaper =
-        this.customBackground &&
-        (this.labelProps.shape === "circle" || this.labelProps.shape === "rounded_rect");
-
-      if (clipToPaper) {
-        ctx.save();
-        this.tracePaperPath(ctx);
-        ctx.clip();
-      }
-
+      // Objects draw past the paper so a smaller label does not hide them.
       super._renderObjects(ctx, objects);
-
-      if (clipToPaper) {
-        ctx.restore();
-      }
 
       if (!this.highlightMirror || this.getActiveObjects().length > 1) {
         return;
@@ -666,7 +763,10 @@ export class CustomCanvas extends fabric.Canvas {
       return;
     }
 
-    super.centerObjectH(object);
+    const pos = object.getPointByOrigin("center", "center");
+    const bounds = this.getLabelBounds();
+    pos.setX(bounds.startX + bounds.width / 2);
+    object.setPositionByOrigin(pos, "center", "center");
   }
 
   /** Centers object vertically in the canvas or label part */
@@ -690,6 +790,15 @@ export class CustomCanvas extends fabric.Canvas {
       return;
     }
 
-    super.centerObjectV(object);
+    const pos = object.getPointByOrigin("center", "center");
+    const bounds = this.getLabelBounds();
+    pos.setY(bounds.startY + bounds.height / 2);
+    object.setPositionByOrigin(pos, "center", "center");
+  }
+
+  /** The pasteboard is larger than the paper. New objects belong on the label. */
+  override centerObject(object: fabric.FabricObject): void {
+    this.centerObjectH(object);
+    this.centerObjectV(object);
   }
 }

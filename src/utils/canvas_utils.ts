@@ -4,6 +4,14 @@ import Barcode from "$/fabric-object/barcode";
 import QRCode from "$/fabric-object/qrcode";
 import { OBJECT_DEFAULTS_TEXT } from "$/defaults";
 
+/** A product that rounds to 0 would stick: later drags multiply that 0. Keep one pixel, and keep a flip. */
+function bakedSide(base: number, scale: number): number {
+  const product = base * scale;
+  const rounded = Math.round(product);
+  if (rounded !== 0) return rounded;
+  return product < 0 ? -1 : 1;
+}
+
 export class CanvasUtils {
   static equalSpacingFillText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, printWidth: number) {
     // calculate every character width, and spacing
@@ -30,8 +38,8 @@ export class CanvasUtils {
 
     if (isNotScalable) {
       obj.set({
-        width: Math.round(obj.width * (obj.scaleX ?? 1)),
-        height: Math.round(obj.height * (obj.scaleY ?? 1)),
+        width: bakedSide(obj.width, obj.scaleX ?? 1),
+        height: bakedSide(obj.height, obj.scaleY ?? 1),
         scaleX: 1,
         scaleY: 1,
         left: Math.round(obj.left),
@@ -50,10 +58,16 @@ export class CanvasUtils {
   }
 
   static fitObjectIntoCanvas(canvas: fabric.Canvas, obj: fabric.FabricObject, xMargin: number, yMarin: number) {
-    const widthRatio = canvas.width / (obj.width + xMargin * 2);
-    const heightRatio = canvas.height / (obj.height + yMarin * 2);
+    const measured = canvas as fabric.Canvas & {
+      getLabelBounds?: () => { startX: number; startY: number; width: number; height: number };
+    };
+    const bounds = measured.getLabelBounds
+      ? measured.getLabelBounds()
+      : { startX: 0, startY: 0, width: canvas.width ?? 1, height: canvas.height ?? 1 };
+    const widthRatio = bounds.width / (obj.width + xMargin * 2);
+    const heightRatio = bounds.height / (obj.height + yMarin * 2);
     const scaleFactor = Math.min(widthRatio, heightRatio);
-    obj.set({ left: xMargin, top: yMarin });
+    obj.set({ left: bounds.startX + xMargin, top: bounds.startY + yMarin });
     obj.scale(scaleFactor);
     canvas.centerObjectV(obj);
     canvas.centerObjectH(obj);

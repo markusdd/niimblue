@@ -26,25 +26,27 @@
   import { Toasts } from "$/utils/toasts";
   import { FileUtils } from "$/utils/file_utils";
   import { z } from "zod";
-  import { formatMm, formatMmValue, mmToPx, normalizeLabelPresets, pxToEditableMm, pxToMm } from "$/utils/label_units";
+  import { formatMm, formatMmValue, mmToPx, normalizeLabelPresets, presetIdentity, pxToEditableMm, pxToMm } from "$/utils/label_units";
   import { normalizeTurns, swapIfOdd } from "$/utils/label_orientation";
   import { inkSwatch, paperSwatch } from "$/utils/label_colors";
   import type { TranslationKey } from "$/utils/i18n";
 
   interface Props {
     labelProps: LabelProps;
-    onChange: (newProps: LabelProps) => void;
+    onChange: (newProps: LabelProps, fit?: boolean) => void;
     onRotate?: () => void;
     loadedRoll?: { widthMm: number; heightMm: number; tailMm: number; shape: LabelShape };
     onUseLoadedRoll?: () => void;
     /** Current design, including objects. Used when saving a template. */
     getCanvas?: () => FabricJson;
+    /** Picture of the current label, used on the preset card. */
+    capturePreview?: () => string | undefined;
     /** Loads a template that stored its own objects. */
     onPresetSelected?: (preset: LabelPreset) => void;
     embedded?: boolean;
   }
 
-  let { labelProps, onChange, onRotate, loadedRoll, onUseLoadedRoll, getCanvas, onPresetSelected, embedded = false }: Props = $props();
+  let { labelProps, onChange, onRotate, loadedRoll, onUseLoadedRoll, getCanvas, capturePreview, onPresetSelected, embedded = false }: Props = $props();
 
   const shapeKey = (value: LabelShape | undefined): TranslationKey => {
     if (value === "circle") return "shell.shape.circle";
@@ -72,6 +74,24 @@
   let tailLength = $state<number>(0);
   let tailPos = $state<TailPosition>("right");
   let mirror = $state<MirrorType>("none");
+  let previewTicket = 0;
+
+  const replacesPreset = $derived.by(() => {
+    const name = title?.trim();
+    if (name) {
+      return labelPresets.some((preset) => presetIdentity(preset) === `name:${name.toLocaleLowerCase()}`);
+    }
+    const draft: LabelPreset = {
+      width: pxToEditableMm(labelProps.size.width),
+      height: pxToEditableMm(labelProps.size.height),
+      unit: "mm",
+      printDirection: labelProps.printDirection,
+      shape: labelProps.shape ?? "rect",
+      canvas: { version: "draft", objects: [] },
+    };
+    const key = presetIdentity(draft);
+    return labelPresets.some((preset) => presetIdentity(preset) === key);
+  });
 
   let error = $derived.by<string>(() => {
     let error = "";
@@ -127,7 +147,7 @@
       quarterTurns: normalizeTurns(quarterTurns),
       ...(labelProps.paperColor ? { paperColor: labelProps.paperColor } : {}),
       ...(labelProps.inkColor ? { inkColor: labelProps.inkColor } : {}),
-    });
+    }, true);
   };
 
   const pickPaper = (paperColor: PaperColor) => {
@@ -177,8 +197,41 @@
     LocalStoragePersistence.saveLabelPresets(labelPresets);
   };
 
+  const fillPresetPreviews = async () => {
+    const ticket = ++previewTicket;
+    const pending = labelPresets.filter((preset) => preset.canvas && !preset.thumbnail);
+    if (pending.length === 0) return;
+    const updates = new Map<string, string>();
+    for (const preset of pending) {
+      if (ticket !== previewTicket) return;
+      try {
+        const thumb = await FileUtils.renderPresetThumbnail(preset);
+        if (thumb) updates.set(presetIdentity(preset), thumb);
+      } catch (e) {
+        console.warn(e);
+      }
+    }
+    if (ticket !== previewTicket || updates.size === 0) return;
+    const next = labelPresets.map((preset) => {
+      const thumb = updates.get(presetIdentity(preset));
+      return thumb && !preset.thumbnail ? { ...preset, thumbnail: thumb } : preset;
+    });
+    try {
+      LocalStoragePersistence.saveLabelPresets(next);
+      if (ticket === previewTicket) labelPresets = next;
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
   const onLabelPresetAdd = () => {
     const snapshot = getCanvas ? FabricJsonSchema.parse(getCanvas()) : undefined;
+    let thumbnail: string | undefined;
+    try {
+      thumbnail = capturePreview?.();
+    } catch (e) {
+      console.warn(e);
+    }
     const newPreset: LabelPreset = {
       printDirection: labelProps.printDirection,
       unit: "mm",
@@ -194,11 +247,15 @@
       quarterTurns: normalizeTurns(labelProps.quarterTurns),
       ...(labelProps.paperColor ? { paperColor: labelProps.paperColor } : {}),
       ...(snapshot ? { canvas: snapshot, savedAt: Date.now() } : {}),
+      ...(thumbnail ? { thumbnail } : {}),
     };
-    const newPresets = [...labelPresets, newPreset];
+    const key = presetIdentity(newPreset);
+    const index = labelPresets.findIndex((preset) => presetIdentity(preset) === key);
+    const newPresets = index >= 0 ? labelPresets.map((preset, i) => (i === index ? newPreset : preset)) : [...labelPresets, newPreset];
     try {
       LocalStoragePersistence.saveLabelPresets(newPresets);
       labelPresets = newPresets;
+      void fillPresetPreviews();
     } catch (e) {
       if (e instanceof z.ZodError) Toasts.zodErrors(e, "Presets save error:");
       else Toasts.error(e);
@@ -308,6 +365,7 @@
         if (storedDensity || signature(savedPresets) !== signature(normalized)) {
           LocalStoragePersistence.saveLabelPresets(normalized);
         }
+        void fillPresetPreviews();
       }
     } catch (e) {
       Toasts.zodErrors(e, "Presets load error:");
@@ -572,7 +630,7 @@
 
       <div class="text-end">
         <button class="btn btn-sm btn-secondary" onclick={onLabelPresetAdd}>
-          {$tr("params.label.save_template")}
+          {$tr(replacesPreset ? "params.label.update_template" : "params.label.save_template")}
         </button>
         <button class="btn btn-sm btn-primary" onclick={onApply}>{$tr("params.label.apply")}</button>
       </div>

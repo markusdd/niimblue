@@ -27,6 +27,7 @@
   import SavedLabelsMenu from "$/components/designer-controls/SavedLabelsMenu.svelte";
   import { CustomCanvas } from "$/fabric-object/custom_canvas";
   import { CanvasUtils } from "$/utils/canvas_utils";
+  import { preventCollapsedSize } from "$/fabric-object/scale_mode";
   import DebugStuff from "$/components/DebugStuff.svelte";
   import PrinterConnector from "$/components/PrinterConnector.svelte";
   import InspectorPanel from "$/components/shell/InspectorPanel.svelte";
@@ -34,6 +35,7 @@
   import RibbonStatus from "$/components/shell/RibbonStatus.svelte";
   import { normalizeTurns, rotatePointCw, rotateSplit, rotateTail } from "$/utils/label_orientation";
   import { LabelType, Utils } from "@mmote/niimbluelib";
+  import { fitObjectsToLabel } from "$/utils/label_fit";
   import { formatMm, formatMmValue, labelPropsFromPreset } from "$/utils/label_units";
   import { borderSvg, type BorderKind } from "$/utils/label_borders";
   import { svgForPrint } from "$/data/clipart";
@@ -230,14 +232,19 @@
     bumpLayers();
   };
 
-  const onUpdateLabelProps = (newProps: LabelProps) => {
+  const onUpdateLabelProps = (newProps: LabelProps, fit = false) => {
+    const previous = labelProps;
     const prevInk = labelProps.inkColor;
     labelProps = newProps;
     const canvas = fabricCanvas!;
     // Resize paints immediately. The feed mark has to follow quarterTurns
     // in that same paint, or it stays on the top of the resized label.
     canvas.setLabelProps(newProps);
-    canvas.setDimensions(newProps.size);
+    if (fit) {
+      canvas.discardActiveObject();
+      fitObjectsToLabel(canvas.getObjects(), previous, newProps);
+    }
+    canvas.fitWorkspace();
     canvas.virtualZoom(canvas.getVirtualZoom());
     canvas.renderAll();
     if (newProps.inkColor && newProps.inkColor !== prevInk) {
@@ -317,20 +324,16 @@
   };
 
   const paperBox = () => {
-    const canvas = fabricCanvas!;
-    const shape = labelProps.shape ?? "rect";
-    if (shape === "circle") {
-      const width = canvas.width ?? 1;
-      const height = canvas.height ?? 1;
-      const diameter = Math.min(width, height);
+    const bounds = fabricCanvas!.getLabelBounds();
+    if ((labelProps.shape ?? "rect") === "circle") {
+      const diameter = Math.min(bounds.width, bounds.height);
       return {
-        left: (width - diameter) / 2,
-        top: (height - diameter) / 2,
+        left: bounds.startX + (bounds.width - diameter) / 2,
+        top: bounds.startY + (bounds.height - diameter) / 2,
         width: diameter,
         height: diameter,
       };
     }
-    const bounds = canvas.getLabelBounds();
     return { left: bounds.startX, top: bounds.startY, width: bounds.width, height: bounds.height };
   };
 
@@ -385,6 +388,20 @@
 
     // trigger reactivity for controls
     editRevision++;
+  };
+
+  const capturePresetPreview = (): string | undefined => {
+    const canvas = fabricCanvas;
+    if (!canvas) return undefined;
+    const active = canvas.getActiveObject();
+    canvas.discardActiveObject();
+    canvas.renderAll();
+    try {
+      return FileUtils.labelThumbnail(canvas);
+    } finally {
+      if (active) canvas.setActiveObject(active);
+      canvas.requestRenderAll();
+    }
   };
 
   const getCanvasForPreview = (): FabricJson => {
@@ -472,13 +489,20 @@
     LabelDesignerObjectHelper.addText(fabricCanvas!, $tr("editor.default_text"));
   };
 
+  let editorLive = true;
+
   const renderOnFontsChanged = () => {
-    fabricCanvas?.forEachObject((o) => {
+    const canvas = fabricCanvas;
+    if (!editorLive || !canvas) return;
+    canvas.forEachObject((o) => {
       if (o instanceof fabric.Textbox) {
+        o.initDimensions();
+        o.setCoords();
         o.dirty = true;
       }
     });
-    fabricCanvas?.requestRenderAll();
+    canvas.fitWorkspace();
+    canvas.requestRenderAll();
   };
 
   onMount(async () => {
@@ -496,12 +520,16 @@
       height: labelProps.size.height,
     });
     fabricCanvas.setLabelProps(labelProps);
+    fabricCanvas.fitWorkspace();
     fabricCanvas.onZoomChange = (z) => {
       zoomText = Math.round(z * 100) + "%";
     };
     fabricCanvas.setGridEnabled(!!$appConfig.gridEnabled);
 
     await loadDefaultLabel();
+
+    document.fonts.ready.then(() => renderOnFontsChanged());
+    document.fonts.addEventListener("loadingdone", renderOnFontsChanged);
 
     window.addEventListener("hashchange", loadLabelFromUrl);
 
@@ -589,6 +617,7 @@
         return;
       }
 
+      preventCollapsedSize(e.target);
       CanvasUtils.fixFabricObjectScale(e.target);
     });
 
@@ -611,6 +640,8 @@
   });
 
   onDestroy(() => {
+    editorLive = false;
+    document.fonts.removeEventListener("loadingdone", renderOnFontsChanged);
     fabricCanvas!.dispose();
     window.removeEventListener("hashchange", loadLabelFromUrl);
   });
@@ -676,7 +707,7 @@
     // Ink belongs to the cartridge, not the roll. A new roll does not keep the previous stock color.
     if (current.inkColor) next.inkColor = current.inkColor;
     if (!sameLabelGeometry(current, next) || (current.paperColor ?? "white") !== (next.paperColor ?? "white")) {
-      onUpdateLabelProps(next);
+      onUpdateLabelProps(next, !sameLabelGeometry(current, next));
     } else {
       rememberCurrentRoll(next);
     }
@@ -742,7 +773,7 @@
     const next: LabelProps = { ...roll.props };
     if (labelProps.inkColor) next.inkColor = labelProps.inkColor;
     if (sameLabelGeometry(labelProps, next) && (labelProps.paperColor ?? "white") === (next.paperColor ?? "white")) return;
-    onUpdateLabelProps(next);
+    onUpdateLabelProps(next, true);
   };
 </script>
 
@@ -854,6 +885,7 @@
         loadedRoll={rollDiffers ? printerRoll : undefined}
         onUseLoadedRoll={useLoadedRoll}
         getCanvas={getCanvasForPreview}
+        capturePreview={capturePresetPreview}
         onPresetSelected={applyPreset}
         {selectedObject}
         {selectedCount}

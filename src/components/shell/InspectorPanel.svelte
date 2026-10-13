@@ -18,11 +18,12 @@
 
   interface Props {
     labelProps: LabelProps;
-    onUpdateLabelProps: (props: LabelProps) => void;
+    onUpdateLabelProps: (props: LabelProps, fit?: boolean) => void;
     onRotate: () => void;
     loadedRoll?: { widthMm: number; heightMm: number; tailMm: number; shape: LabelShape };
     onUseLoadedRoll?: () => void;
     getCanvas?: () => FabricJson;
+    capturePreview?: () => string | undefined;
     onPresetSelected?: (preset: LabelPreset) => void;
     selectedObject: fabric.FabricObject | undefined;
     selectedCount: number;
@@ -39,6 +40,7 @@
     loadedRoll,
     onUseLoadedRoll,
     getCanvas,
+    capturePreview,
     onPresetSelected,
     selectedObject,
     selectedCount,
@@ -81,6 +83,7 @@
     {loadedRoll}
     {onUseLoadedRoll}
     {getCanvas}
+    {capturePreview}
     {onPresetSelected} />
 </div>
 

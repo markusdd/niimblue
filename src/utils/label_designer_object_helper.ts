@@ -7,6 +7,7 @@ import type { OjectType } from "$/types";
 import { Toasts } from "$/utils/toasts";
 import { FileUtils } from "$/utils/file_utils";
 import { CanvasUtils } from "$/utils/canvas_utils";
+import { markLayoutScale } from "$/fabric-object/scale_mode";
 import { TextboxExt, TextboxExtProps } from "$/fabric-object/textbox-ext";
 
 type SvgBox = { left: number; top: number; width: number; height: number };
@@ -20,6 +21,7 @@ export class LabelDesignerObjectHelper {
     }
     const obj = fabric.util.groupSVGElements(parts, options);
     obj.set({ ...OBJECT_DEFAULTS, originX: "left", originY: "top" });
+    markLayoutScale(obj, "lock");
     return {
       obj,
       viewWidth: Number(options.width) || obj.width || 1,
@@ -72,6 +74,7 @@ export class LabelDesignerObjectHelper {
       scaleY,
       perPixelTargetFind: true,
     });
+    markLayoutScale(obj, "free");
     obj.setCoords();
     canvas.add(obj);
     canvas.renderAll();
@@ -88,6 +91,7 @@ export class LabelDesignerObjectHelper {
       const url = await FileUtils.blobToDataUrl(file);
       const fabricImg = await fabric.FabricImage.fromURL(url);
       fabricImg.set({ ...OBJECT_DEFAULTS });
+      markLayoutScale(fabricImg, "lock");
       CanvasUtils.fitObjectIntoCanvas(canvas, fabricImg, OBJECT_DEFAULTS.left, OBJECT_DEFAULTS.top);
       canvas.add(fabricImg);
       return fabricImg;
@@ -176,6 +180,7 @@ export class LabelDesignerObjectHelper {
       ...OBJECT_DEFAULTS_VECTOR,
       radius: OBJECT_SIZE_DEFAULTS.width / 2,
     });
+    markLayoutScale(obj, "lock");
     canvas.add(obj);
     canvas.centerObjectV(obj);
     return obj;
@@ -186,6 +191,7 @@ export class LabelDesignerObjectHelper {
       ...OBJECT_SIZE_DEFAULTS,
       ...OBJECT_DEFAULTS_VECTOR,
     });
+    markLayoutScale(obj, "free");
     canvas.add(obj);
     canvas.centerObjectV(obj);
     return obj;

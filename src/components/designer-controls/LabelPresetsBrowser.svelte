@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { LabelPreset } from "$/types";
   import { tr } from "$/utils/i18n";
+  import { formatMmValue } from "$/utils/label_units";
+  import { paperSwatch } from "$/utils/label_colors";
   import MdIcon from "$/components/basic/MdIcon.svelte";
 
   interface Props {
@@ -13,27 +15,20 @@
   let { class: className = "", onItemDelete, onItemSelected, presets }: Props = $props();
   let deleteIndex = $state<number>(-1);
 
-  const fit = (preset: LabelPreset): { width: number; height: number } => {
-    const presetWidth = Math.max(preset.width, 1);
-    const presetHeight = Math.max(preset.height, 1);
-    const max = Math.max(presetWidth, presetHeight);
-    if (preset.shape === "circle") {
-      const side = Math.round((Math.min(presetWidth, presetHeight) / max) * 100);
-      return { width: side, height: side };
-    }
-    return {
-      width: Math.round((presetWidth / max) * 100),
-      height: Math.round((presetHeight / max) * 100),
-    };
+  /** Label aspect, so the card can contain the picture instead of stretching it. */
+  const aspect = (preset: LabelPreset): { pw: number; ph: number } => ({
+    pw: Math.max(preset.width, 0.01),
+    ph: Math.max(preset.height, 0.01),
+  });
+
+  const sizeText = (preset: LabelPreset): string => {
+    const unit = preset.unit === "px" ? $tr("params.label.px") : $tr("params.label.mm");
+    const width = preset.unit === "px" ? String(preset.width) : formatMmValue(preset.width);
+    const height = preset.unit === "px" ? String(preset.height) : formatMmValue(preset.height);
+    return `${width}×${height} ${unit}`;
   };
 
-  const caption = (preset: LabelPreset): string => {
-    if (preset.title) {
-      return preset.title;
-    }
-    const unit = preset.unit === "mm" ? $tr("params.label.mm") : preset.unit === "px" ? $tr("params.label.px") : "";
-    return `${preset.width}×${preset.height}${unit}`;
-  };
+  const caption = (preset: LabelPreset): string => preset.title?.trim() || sizeText(preset);
 
   const deleteConfirmed = (e: MouseEvent, idx: number) => {
     e.stopPropagation();
@@ -55,18 +50,33 @@
 <div class="preset-browser {className}">
   {#each presets as item, idx (item)}
     <div class="preset">
-      <button type="button" class="preview" aria-label={caption(item)} onclick={() => onItemSelected(idx)}>
-        <span
-          class="paper print-start-{item.printDirection}"
-          class:circle={item.shape === "circle"}
-          class:rounded={item.shape === "rounded_rect"}
-          style="width: {fit(item).width}%; height: {fit(item).height}%;">
+      <button
+        type="button"
+        class="preview"
+        aria-label={item.title?.trim() ? `${caption(item)}, ${sizeText(item)}` : caption(item)}
+        onclick={() => onItemSelected(idx)}>
+        <span class="frame">
+          <span
+            class="paper print-start-{item.printDirection}"
+            class:circle={item.shape === "circle"}
+            class:rounded={item.shape === "rounded_rect"}
+            class:has-thumb={!!item.thumbnail}
+            style="--pw: {aspect(item).pw}; --ph: {aspect(item).ph}; background: {paperSwatch[item.paperColor ?? 'white']};">
+            {#if item.thumbnail}
+              <img src={item.thumbnail} alt="" />
+            {/if}
+          </span>
         </span>
       </button>
       <div class="meta">
         {#if deleteIndex !== idx}
-          <span class="name">{caption(item)}</span>
-          {#if item.canvas}
+          <div class="copy">
+            <span class="name">{caption(item)}</span>
+            {#if item.title?.trim()}
+              <span class="size">{sizeText(item)}</span>
+            {/if}
+          </div>
+          {#if item.canvas && !item.thumbnail}
             <span class="count" title={caption(item)}>{item.canvas.objects.length}</span>
           {/if}
           <button
@@ -95,7 +105,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.4rem;
-    max-height: 240px;
+    max-height: 320px;
     max-width: 100%;
     overflow: auto;
     padding: 0.15rem;
@@ -114,22 +124,55 @@
   }
 
   .preview {
-    height: 58px;
+    display: block;
+    width: 100%;
+    height: 76px;
+    margin: 0;
+    padding: 0;
     border: 0;
     border-radius: 6px;
-    background: #efeae1;
+    background: transparent;
+    line-height: 0;
+  }
+
+  /* Buttons do not clip their contents, so the picture lives in this box. */
+  .frame {
+    container-type: size;
+    box-sizing: border-box;
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 100%;
+    height: 100%;
     padding: 6px;
+    overflow: hidden;
+    border-radius: 6px;
+    background: #efeae1;
   }
 
   .paper {
+    box-sizing: border-box;
     display: block;
+    flex: 0 0 auto;
+    position: relative;
+    width: min(100cqw, calc(100cqh * var(--pw) / var(--ph)));
+    aspect-ratio: var(--pw) / var(--ph);
+    height: auto;
+    min-width: 0;
+    min-height: 0;
     background: #fff;
     border: 1px solid rgba(40, 32, 22, 0.28);
-    max-width: 100%;
-    max-height: 100%;
+    overflow: hidden;
+  }
+
+  .paper img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: fill;
+    pointer-events: none;
   }
 
   .paper.rounded {
@@ -148,6 +191,12 @@
     box-shadow: inset 0 3px 0 #c4554a;
   }
 
+  /* The picture already includes the paper edge and the feed mark. */
+  .paper.has-thumb {
+    border: 0;
+    box-shadow: none;
+  }
+
   .meta {
     display: flex;
     align-items: center;
@@ -155,15 +204,29 @@
     min-width: 0;
   }
 
-  .name {
+  .copy {
     flex: 1;
     min-width: 0;
+  }
+
+  .name {
+    display: block;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 0.72rem;
     line-height: 1.2;
     color: #241f1a;
+  }
+
+  .size {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #6d655b;
+    font-size: 0.68rem;
+    line-height: 1.2;
   }
 
   .count {
