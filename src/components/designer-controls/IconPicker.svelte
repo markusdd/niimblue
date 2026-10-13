@@ -7,7 +7,7 @@
   import { Toasts } from "$/utils/toasts";
   import { iconMatches } from "$/utils/icon_search";
   import { materialKeywords } from "$/data/material_keywords";
-  import { CLIPART, PHOSPHOR_NOTICE } from "$/data/clipart";
+  import { CLIPART, PHOSPHOR_NOTICE, type ClipartIcon } from "$/data/clipart";
 
   interface Props {
     onSubmit: (i: MaterialIcon) => void;
@@ -21,6 +21,8 @@
   const iconNames = Object.keys(iconCodepoints) as MaterialIcon[];
   const sources = [
     { id: "clipart", key: "editor.iconpicker.source.clipart" },
+    { id: "tabler", key: "editor.iconpicker.source.tabler" },
+    { id: "health", key: "editor.iconpicker.source.health" },
     { id: "material", key: "editor.iconpicker.source.material" },
     { id: "mine", key: "editor.iconpicker.source.mine" },
   ] as const satisfies ReadonlyArray<{ id: string; key: TranslationKey }>;
@@ -28,11 +30,30 @@
   let search = $state<string>("");
   let source = $state<(typeof sources)[number]["id"]>("clipart");
   let deleteMode = $state<boolean>(false);
+  let extraIcons = $state<Partial<Record<"tabler" | "health", ClipartIcon[]>>>({});
+  let collectionFailed = $state<Partial<Record<"tabler" | "health", boolean>>>({});
+  const collectionLoads: Partial<Record<"tabler" | "health", Promise<ClipartIcon[]>>> = {};
+
+  $effect(() => {
+    if (source !== "tabler" && source !== "health") return;
+    const selected = source;
+    if (extraIcons[selected] || collectionFailed[selected]) return;
+    collectionLoads[selected] ??= (selected === "tabler" ? import("$/data/tabler_clipart") : import("$/data/health_clipart"))
+      .then((module) => module.CLIPART);
+    void collectionLoads[selected]!.then((icons) => { extraIcons[selected] = icons; }).catch((error) => {
+      collectionFailed[selected] = true;
+      Toasts.error(error);
+    });
+  });
+
+  const isClipart = $derived(source === "clipart" || source === "tabler" || source === "health");
+  const loading = $derived((source === "tabler" || source === "health") && !extraIcons[source] && !collectionFailed[source]);
+  const activeClipart = $derived(source === "clipart" ? CLIPART : source === "tabler" || source === "health" ? extraIcons[source] ?? [] : []);
 
   const svgUrl = (svg: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 
   const clipartHits = $derived(
-    source === "clipart" ? CLIPART.filter((item) => iconMatches(search, item.id, item.keywords)) : [],
+    activeClipart.filter((item) => iconMatches(search, item.id, item.keywords)),
   );
   const materialHits = $derived(
     source === "material"
@@ -45,7 +66,7 @@
   const showEmpty = $derived.by(() => {
     const query = search.trim();
     if (!query) return false;
-    if (source === "clipart") return clipartHits.length === 0;
+    if (isClipart) return !loading && clipartHits.length === 0;
     if (source === "material") return materialHits.length === 0;
     return mineHits.length === 0;
   });
@@ -102,7 +123,8 @@
 
       <input type="text" class="form-control form-control-sm mb-1" placeholder={$tr("editor.iconpicker.search")} bind:value={search} />
 
-      {#if source === "clipart"}
+      {#if isClipart}
+        {#if loading}<p class="credit" role="status">{$tr("editor.iconpicker.loading")}</p>{/if}
         <div class="icons">
           {#each clipartHits as item (item.id)}
             <button type="button" class="glyph" data-clipart={item.id} title={item.id} onclick={() => onClipart(item.svg)}>
@@ -110,7 +132,13 @@
             </button>
           {/each}
         </div>
-        <p class="credit" title={PHOSPHOR_NOTICE}>{$tr("editor.iconpicker.credit")}</p>
+        {#if source === "clipart"}
+          <p class="credit" title={PHOSPHOR_NOTICE}>{$tr("editor.iconpicker.credit")}</p>
+        {:else if source === "tabler"}
+          <a class="credit" href="https://github.com/tabler/tabler-icons" target="_blank" rel="noreferrer">Tabler Icons · MIT</a>
+        {:else}
+          <a class="credit" href="https://healthicons.org/about" target="_blank" rel="noreferrer">Health Icons · CC0</a>
+        {/if}
       {:else if source === "material"}
         <div class="icons">
           {#each materialHits as name (name)}

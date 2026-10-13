@@ -232,16 +232,4 @@ export const CLIPART: ClipartIcon[] = [
   entry("confetti", "confetti party feier", confetti),
 ];
 
-/** Fabric does not inherit fill from the svg tag, so paint the shapes black. */
-export const svgForPrint = (svg: string): string => {
-  const black = svg.replaceAll("currentColor", "#000");
-  return black.replace(
-    /<(path|circle|rect|polygon|ellipse|polyline)\b([^>]*?)>/g,
-    (match, tag: string, attrs: string) => {
-      if (/\sfill\s*=/.test(attrs)) return match;
-      const slash = attrs.trimEnd().endsWith("/") ? "/" : "";
-      const body = slash ? attrs.trimEnd().slice(0, -1) : attrs;
-      return `<${tag}${body} fill="#000"${slash}>`;
-    },
-  );
-};
+export { svgForPrint } from "$/utils/svg_for_print";
