@@ -1,10 +1,17 @@
 mod ble_policy;
 mod bluetooth;
+#[cfg(target_os = "windows")]
+mod windows_runtime;
 
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(target_os = "windows")]
+    if !windows_runtime::ensure_available() {
+        return;
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_window_state::Builder::default().build())

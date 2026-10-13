@@ -50,7 +50,8 @@ npm run desktop:build
 The release build embeds the production frontend, fonts, icons, presets and
 license notices. No hosted website or local web server is needed after install.
 Artifacts are written to `src-tauri/target/release/bundle` inside this directory.
-The default installer is AppImage on Linux, NSIS on Windows and DMG on macOS.
+The default output is AppImage on Linux, a standalone `NiimBlue.exe` on Windows,
+and DMG on macOS. The Windows EXE is written to `src-tauri/target/release/NiimBlue.exe`.
 Override the format explicitly when needed:
 
 ```sh
@@ -71,7 +72,27 @@ and Linux Bluetooth path, but the Windows backend still needs a real printer tes
 macOS builds include Bluetooth usage descriptions; build/test on macOS separately.
 
 The manual `Desktop builds` GitHub Actions workflow prepares Linux AppImage,
-Windows NSIS and macOS DMG artifacts without publishing a release.
+Windows standalone EXE plus NSIS installer, and macOS DMG artifacts without publishing a release.
+
+### Standalone Windows app
+
+Copy `NiimBlue.exe` to a convenient folder and launch it. The frontend, fonts,
+icons and presets are embedded; no companion asset folder or app installation
+is required. Bluetooth uses the Windows Bluetooth APIs without registration.
+Before creating a window, NiimBlue checks for WebView2 Runtime. If it is missing,
+a native Windows dialog offers to download and install Microsoft's Evergreen
+runtime. This requires internet access, verifies the download's Microsoft
+Authenticode signature, and runs the bootstrapper without requesting elevation.
+After setup, NiimBlue checks again before opening its window. Declining or a failed
+installation closes the app; installation failures show a native error dialog.
+The prompt follows the Windows UI language (German or English). The NSIS installer
+also handles the runtime prerequisite during installation.
+See [Microsoft's runtime distribution guidance](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution).
+
+Saved designs, presets and preferences use the user's app data directories,
+not the EXE folder. Keep the application identifier `app.niimblue.desktop`
+unchanged across updates to preserve that storage. Replace the EXE while the app
+is closed to update it; create a shortcut manually if desired.
 
 ## Transport behavior
 
@@ -104,6 +125,9 @@ Before gifting or publishing an installer, test on both Linux and Windows:
 discovery, connection, printer/ribbon information, a simple label, a dense framed
 50 × 30 mm label, repeated prints, canceling connection, switching off the printer,
 reconnection and app restart. Verify saved labels and presets after restart.
+On Windows also test both the installer and standalone EXE. In a clean Windows
+VM without WebView2, verify accepting/declining runtime setup, offline failure,
+successful setup and subsequent launches without a prompt.
 
 Desktop storage is separate from browser storage. Export/import label templates
 and presets to transfer existing designs into the desktop app.
