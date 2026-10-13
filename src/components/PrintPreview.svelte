@@ -30,6 +30,7 @@
   import AppModal from "$/components/basic/AppModal.svelte";
   import { printScale } from "$/utils/label_units";
   import { normalizeTurns, unrotateCanvas } from "$/utils/label_orientation";
+  import { printFit } from "$/utils/print_fit";
 
   interface Props {
     labelProps: LabelProps;
@@ -71,6 +72,7 @@
   let pagesTotal = $state<number>(1);
   let offset = $state<PreviewPropsOffset>({ x: 0, y: 0, offsetType: "inner" });
   let offsetWarning = $state<string>("");
+  let fitPercent = $state<number>(100);
   let currentPrintTask: AbstractPrintTask | undefined;
   let savedProps = $state<PreviewProps>({});
   let modalRef: AppModal;
@@ -82,20 +84,20 @@
 
   const endPrint = async () => {
     clearInterval(statusTimer);
-
-    if (!$disconnected && printState !== "idle") {
-      if (currentPrintTask !== undefined) {
-        await currentPrintTask.printEnd();
-      } else {
-        console.warn("Print task undefined, falling back to PrintEnd command");
-        await $printerClient.protocol.printEnd();
+    try {
+      if (!$disconnected && printState !== "idle") {
+        if (currentPrintTask !== undefined) {
+          await currentPrintTask.printEnd();
+        } else {
+          console.warn("Print task undefined, falling back to PrintEnd command");
+          await $printerClient.protocol.printEnd();
+        }
       }
-
-      $printerClient.startHeartbeat();
+    } finally {
+      printState = "idle";
+      printProgress = { progressType: "send", percents: 0 };
+      if (!$disconnected) $printerClient.startHeartbeat();
     }
-
-    printState = "idle";
-    printProgress = { progressType: "send", percents: 0 };
   };
 
   const onPrintOnSystemPrinter = async () => {
@@ -121,8 +123,11 @@
       density,
       speed,
       labelType,
-      statusPollIntervalMs: 100,
+      statusPollIntervalMs: 300,
       statusTimeoutMs: 8_000,
+      // The M2 can still be receiving raster rows after the library's 10 s
+      // deadline. Wait for PageEnd before polling status or ending the job.
+      pageTimeoutMs: 30_000,
       pageColor: PageColorType.SingleColor,
     };
 
@@ -143,13 +148,15 @@
     $printerClient.on("printprogress", printListener);
     $printerClient.on("printpacketprogress", sendListener);
 
-    currentPrintTask = $printerClient.protocol.newPrintTask(printTaskName, opts);
-
+    let printStage = "initializing print";
     try {
+      currentPrintTask = $printerClient.protocol.newPrintTask(printTaskName, opts);
+      console.log("Print settings", { task: printTaskName, detectedTask: detectedPrintTaskName, ...opts });
       await currentPrintTask.printInit();
 
       for (let pageIdx = 0; pageIdx < pagesTotal; pageIdx++) {
         currentPage = pageIdx;
+        printStage = `preparing page ${pageIdx + 1}`;
         console.log("Printing page", currentPage);
         await generatePreviewData(currentPage);
         const encoded: EncodedImage = ImageEncoder.encodeCanvas(
@@ -158,26 +165,31 @@
           labelProps.printDirection,
         );
 
+        printStage = `sending page ${pageIdx + 1}`;
+        console.log("Encoded print size", { rows: encoded.rows, cols: encoded.cols });
         await currentPrintTask.printPage(encoded, quantity);
+        printStage = `waiting for page ${pageIdx + 1}`;
         await currentPrintTask.waitForPageFinished();
       }
+      printStage = "waiting for print completion";
       await currentPrintTask.waitForFinished();
     } catch (e) {
-      error = `${e}`;
-      console.error(e);
+      error = `${printStage}: ${e}`;
+      console.error(error, e);
     }
 
     try {
       await endPrint();
     } catch (e) {
-      error = `${e}`;
-      console.error(e);
+      const cleanupError = `ending print: ${e}`;
+      error = error ? `${error}\n${cleanupError}` : cleanupError;
+      console.error(cleanupError, e);
     }
 
     printState = "idle";
     $printerClient.off("printprogress", printListener);
     $printerClient.off("printpacketprogress", sendListener);
-    $printerClient.startHeartbeat();
+    currentPrintTask = undefined;
 
     if (printNow && !error) {
       modalRef.hide();
@@ -368,7 +380,22 @@
 
     fabricTempCanvas.requestRenderAll();
 
-    const preRenderedCanvas = scaleForPrinter(fabricTempCanvas.toCanvasElement(), printScale($printerMeta?.dpi));
+    let preRenderedCanvas = scaleForPrinter(fabricTempCanvas.toCanvasElement(), printScale($printerMeta?.dpi));
+    // The editor represents the paper size. Only the printable width must fit
+    // the head; keep the feed length so fitting does not change the label pitch.
+    const acrossWidth = (labelProps.printDirection === "top") !== (normalizeTurns(labelProps.quarterTurns) % 2 === 1);
+    const fit = printFit(preRenderedCanvas.width, preRenderedCanvas.height, acrossWidth, $printerMeta?.printheadPixels);
+    fitPercent = Math.round(fit.scale * 100);
+    if (fit.scale < 1) {
+      const fitted = document.createElement("canvas");
+      fitted.width = fit.width;
+      fitted.height = fit.height;
+      const fittedContext = fitted.getContext("2d")!;
+      fittedContext.fillStyle = "white";
+      fittedContext.fillRect(0, 0, fit.width, fit.height);
+      fittedContext.drawImage(preRenderedCanvas, fit.x, fit.y, fit.drawWidth, fit.drawHeight);
+      preRenderedCanvas = fitted;
+    }
     const ctx = preRenderedCanvas.getContext("2d")!;
     previewCanvas.width = preRenderedCanvas.width;
     previewCanvas.height = preRenderedCanvas.height;
@@ -381,7 +408,10 @@
   };
 
   const onModalClose = () => {
-    endPrint();
+    void endPrint().catch((e) => {
+      error = error ? `${error}\nending print: ${e}` : `ending print: ${e}`;
+      console.error(e);
+    });
   };
 
   const taskHasCap = (cap: TaskCap) => {
@@ -467,6 +497,10 @@
           <div class="progress-bar" style="width: {printProgress.percents}%">{printProgress.percents}%</div>
         </div>
       </div>
+    {/if}
+
+    {#if fitPercent < 100}
+      <div class="alert alert-info" role="status">{$tr("preview.fit_printhead")} ({fitPercent}%)</div>
     {/if}
 
     {#if error}

@@ -24,6 +24,8 @@ import {
   type PrinterModelMeta,
 } from "@mmote/niimbluelib";
 import { installNiimbotBluetoothConnect } from "$/utils/bluetooth_connect";
+import { installNiimbotBluetoothResponse } from "$/utils/bluetooth_response";
+import { installReportedPrinterMetadata } from "$/utils/printer_metadata";
 import { LocalStoragePersistence, writablePersisted } from "$/utils/persistence";
 import { APP_CONFIG_DEFAULTS, CSV_DEFAULT, OBJECT_DEFAULTS_TEXT } from "$/defaults";
 import z from "zod";
@@ -47,6 +49,8 @@ export const heartbeatFails = writable<number>(0);
 export const csvData = writablePersisted<CsvParams>("csv_params", CsvParamsSchema, { data: CSV_DEFAULT });
 
 installNiimbotBluetoothConnect();
+installNiimbotBluetoothResponse();
+installReportedPrinterMetadata();
 
 userFonts.subscribe(FileUtils.loadFonts);
 

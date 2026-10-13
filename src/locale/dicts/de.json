@@ -119,6 +119,7 @@
     "preview.offset.inner": "Innen",
     "preview.offset.outer": "Außen",
     "preview.offset": "Versatz",
+    "preview.fit_printhead": "Motiv an die bedruckbare Breite angepasst; die Etikettengröße bleibt gleich.",
     "preview.postprocess.atkinson": "Rastern (Atkinson)",
     "preview.postprocess.threshold": "Schwellenwert",
     "preview.postprocess": "Nachbearbeitung",
