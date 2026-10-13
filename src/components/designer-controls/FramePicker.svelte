@@ -28,6 +28,13 @@
     vine: "editor.frames.vine",
     scroll: "editor.frames.scroll",
     stamp: "editor.frames.stamp",
+    engraved: "editor.frames.engraved",
+    laurel: "editor.frames.laurel",
+    meadow: "editor.frames.meadow",
+    nouveau: "editor.frames.nouveau",
+    celestial: "editor.frames.celestial",
+    circuit: "editor.frames.circuit",
+    schematic: "editor.frames.schematic",
   };
 
   let search = $state("");

@@ -18,6 +18,13 @@ export const BORDER_KINDS = [
   "vine",
   "scroll",
   "stamp",
+  "engraved",
+  "laurel",
+  "meadow",
+  "nouveau",
+  "celestial",
+  "circuit",
+  "schematic",
 ] as const;
 
 export type BorderKind = (typeof BORDER_KINDS)[number];
@@ -41,6 +48,13 @@ export const borderKeywords: Record<BorderKind, string> = {
   vine: `${frameWords} vine flower leaf blume blatt ranke floral blumenranke`,
   scroll: `${frameWords} scroll antique antik spiral schnoerkel barock ornament`,
   stamp: `${frameWords} stamp postage perforation briefmarke perforiert lochung`,
+  engraved: `${frameWords} engraved antique vintage etching engraving gravur antik kupferstich rosette ornament`,
+  laurel: `${frameWords} laurel olive botanical leaves wreath lorbeer olive blatt blaetter kranz botanisch`,
+  meadow: `${frameWords} meadow wildflower daisy flower floral garden wiese wildblumen gaensebluemchen blumen`,
+  nouveau: `${frameWords} nouveau jugendstil artsy whiplash lily iris floral kunst ornament`,
+  celestial: `${frameWords} celestial moon stars sun cosmic himmel mond sterne sonne kosmos artsy`,
+  circuit: `${frameWords} circuit pcb traces electronics technical platine leiterbahn elektronik technik`,
+  schematic: `${frameWords} schematic resistor capacitor circuit electronics schaltplan widerstand kondensator elektronik`,
 };
 
 const n = (value: number): string => {
@@ -98,7 +112,7 @@ const cornerPaths = (x: number, y: number, w: number, h: number, radius: number)
   const r = Math.min(radius, w / 2, h / 2);
   const extra = Math.max(arm * 0.45, Math.min(w, h) * 0.08);
   return [
-    `M ${n(x)} ${n(y + r + extra)} V ${n(y + r)} A ${n(r)} ${n(r)} 0 0 0 ${n(x + r)} ${n(y)} H ${n(x + r + extra)}`,
+    `M ${n(x)} ${n(y + r + extra)} V ${n(y + r)} A ${n(r)} ${n(r)} 0 0 1 ${n(x + r)} ${n(y)} H ${n(x + r + extra)}`,
     `M ${n(x + w - r - extra)} ${n(y)} H ${n(x + w - r)} A ${n(r)} ${n(r)} 0 0 1 ${n(x + w)} ${n(y + r)} V ${n(y + r + extra)}`,
     `M ${n(x + w)} ${n(y + h - r - extra)} V ${n(y + h - r)} A ${n(r)} ${n(r)} 0 0 1 ${n(x + w - r)} ${n(y + h)} H ${n(x + w - r - extra)}`,
     `M ${n(x + r + extra)} ${n(y + h)} H ${n(x + r)} A ${n(r)} ${n(r)} 0 0 1 ${n(x)} ${n(y + h - r)} V ${n(y + h - r - extra)}`,
@@ -457,6 +471,37 @@ const steppedCorner = (x: number, y: number, sx: number, sy: number, arm: number
 const spacingOf = (pts: EdgePoint[]): number =>
   pts.length > 1 ? Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y) || 1 : 1;
 
+/** Local x follows the edge; local y points inward, keeping ornaments on paper. */
+const ornamentAt = (p: EdgePoint, size: number, body: string): string =>
+  `<g transform="matrix(${n(p.ny * size)} ${n(-p.nx * size)} ${n(p.nx * size)} ${n(p.ny * size)} ${n(p.x)} ${n(p.y)})">${body}</g>`;
+
+/** Space each straight edge independently, reserving room for adjacent corners. */
+const spacedOrnaments = (
+  w: number, h: number, pad: number, radius: number, shape: LabelShape, spacing: number, clearance: number,
+): EdgePoint[] => {
+  const segs = outlineSegs(w, h, pad, radius, shape);
+  if (shape === "circle") {
+    const count = Math.max(4, Math.round(segs[0].len / spacing));
+    return Array.from({ length: count }, (_, i) => segs[0].at((i + 0.5) / count));
+  }
+  return segs.flatMap((seg) => {
+    const a = seg.at(0), b = seg.at(1);
+    if (Math.hypot(a.nx - b.nx, a.ny - b.ny) > 0.01 || seg.len < clearance * 2) return [];
+    const usable = seg.len - clearance * 2;
+    const count = Math.max(1, Math.round(usable / spacing));
+    return Array.from({ length: count }, (_, i) => seg.at((clearance + usable * (i + 0.5) / count) / seg.len));
+  });
+};
+
+const flowerOutline = (stroke: number): string => {
+  const petals = Array.from({ length: 6 }, (_, i) =>
+    `<ellipse cx="0" cy="-0.31" rx="0.16" ry="0.27" transform="rotate(${i * 60})" ${strokeAttr(stroke)}/>`);
+  return `${petals.join("")}<circle cx="0" cy="0" r="0.12" fill="#000"/>`;
+};
+
+const starMark = (stroke: number): string =>
+  `<path d="M 0 -0.65 Q 0.08 -0.08 0.5 0 Q 0.08 0.08 0 0.65 Q -0.08 0.08 -0.5 0 Q -0.08 -0.08 0 -0.65 Z" ${strokeAttr(stroke)}/>`;
+
 /**
  * A frame drawn in the label's own pixel box. Circle stock gets a ring.
  * A transparent rect keeps the group the size of the paper so the stroke
@@ -615,11 +660,13 @@ export const borderSvg = (
       const stem = wavePts(pts, amp, turns, 0.4);
       parts.push(strokePath(stem, strokeAttr(Math.max(1.5, stroke * 0.8)), true));
       const leafLen = Math.min(36, Math.max(14, minSide * 0.12));
-      const every = Math.max(1, Math.round(Math.max(leafLen * 1.65, minSide * 0.2) / spacing));
+      const ornaments = spacedOrnaments(w, h, pad, innerRadius, shape,
+        Math.max(leafLen * 1.65, minSide * 0.2), leafLen);
       let placed = 0;
-      for (let i = Math.floor(every / 2); i < stem.length; i += every) {
-        if (placed % 3 === 2) parts.push(flowerMark(stem[i], leafLen * 0.55));
-        else parts.push(leafPath(stem[i], placed % 2 === 0 ? 1 : -1, leafLen, leafLen * 0.58));
+      for (const point of ornaments) {
+        const index = nearestIndex(stem, (p) => Math.hypot(p.x - point.x, p.y - point.y));
+        if (placed % 3 === 2) parts.push(flowerMark(stem[index], leafLen * 0.55));
+        else parts.push(leafPath(stem[index], placed % 2 === 0 ? 1 : -1, leafLen, leafLen * 0.58));
         placed += 1;
       }
     }
@@ -659,6 +706,145 @@ export const borderSvg = (
   } else if (kind === "stamp") {
     const dot = Math.max(1.25, Math.min(stroke * 0.7, minSide * 0.012));
     parts.push(marksOnSegs(outlineSegs(w, h, pad, innerRadius, shape), dot, dot * 2.7));
+  } else if (kind === "engraved") {
+    const gap = minSide * 0.035;
+    parts.push(outline(w, h, pad, innerRadius, shape, stroke * 0.8));
+    parts.push(outline(w, h, pad + gap, Math.max(0, innerRadius - gap), shape, stroke * 0.55));
+    const size = minSide * 0.085;
+    const ornamentPad = pad + gap + size * 1.2;
+    const points: EdgePoint[] = shape === "circle"
+      ? [0.125, 0.375, 0.625, 0.875].map((t) => {
+          const a = t * Math.PI * 2;
+          const r = minSide / 2 - ornamentPad;
+          return edgePoint(w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r, -Math.cos(a), -Math.sin(a));
+        })
+      : [
+          edgePoint(ornamentPad, ornamentPad, 0, 1),
+          edgePoint(w - ornamentPad, ornamentPad, 0, 1),
+          edgePoint(w - ornamentPad, h - ornamentPad, 0, -1),
+          edgePoint(ornamentPad, h - ornamentPad, 0, -1),
+        ];
+    for (const p of points) {
+      const attr = strokeAttr(stroke / size * 0.65);
+      const petals = Array.from({ length: 8 }, (_, i) =>
+        `<path d="M 0 0 C -0.34 -0.35 -0.24 -0.85 0 -1 C 0.24 -0.85 0.34 -0.35 0 0" transform="rotate(${i * 45})" ${attr}/>`);
+      parts.push(ornamentAt(p, size, `${petals.join("")}<circle r="0.16" fill="#000"/>`));
+    }
+  } else if (kind === "laurel" || kind === "meadow" || kind === "celestial") {
+    const size = minSide * (kind === "laurel" ? 0.075 : 0.07);
+    const framePad = pad + size * 0.65;
+    const pts = spacedOrnaments(w, h, framePad, Math.max(innerRadius, size), shape,
+      size * (kind === "laurel" ? 2.3 : 3.8), size * 1.25);
+    parts.push(outline(w, h, framePad, Math.max(innerRadius, size), shape, stroke * 0.65));
+    for (let index = 0; index < pts.length; index++) {
+      const sw = stroke / size * 0.65;
+      let body: string;
+      if (kind === "laurel") {
+        body = `<path d="M 0 0 Q -0.8 0.1 -1 0.85 Q -0.2 0.75 0 0 M 0 0 Q 0.8 0.1 1 0.85 Q 0.2 0.75 0 0" fill="#000"/><path d="M 0 0 V 0.6" ${strokeAttr(sw * 0.6)}/>`;
+      } else if (kind === "meadow") {
+        // Inset the leaf and head, but connect the stem to the frame. Stop its
+        // round cap at the nearest petal: 0.25 + 1 - (0.31 + 0.27).
+        const stemEnd = 0.67 - sw / 2;
+        body = `<path d="M 0 0 V ${stemEnd.toFixed(3)}" ${strokeAttr(sw)}/><g transform="translate(0 0.25)"><g transform="translate(0 1)">${flowerOutline(sw * 0.85)}</g><path d="M 0 0.22 Q -0.28 -0.02 -0.66 0.12 Q -0.38 0.38 0 0.22 Z" fill="#000"/></g>`;
+      } else if (index % 3 === 0) {
+        body = `<path d="M 0.18 -0.55 A 0.58 0.58 0 1 0 0.18 0.55 Q -0.38 0 0.18 -0.55 Z" fill="#000"/>`;
+      } else {
+        body = starMark(sw);
+      }
+      parts.push(ornamentAt(pts[index], size, body));
+    }
+  } else if (kind === "nouveau") {
+    const size = minSide * 0.095;
+    const framePad = pad + size * 0.3;
+    parts.push(outline(w, h, framePad, Math.max(innerRadius, size * 0.7), shape, stroke * 0.65));
+    const segs = outlineSegs(w, h, framePad, Math.max(innerRadius, size * 0.7), shape);
+    const pts = shape === "circle"
+      ? [0.125, 0.375, 0.625, 0.875].map((t) => segs[0].at(t))
+      : segs.filter((seg) => {
+          const a = seg.at(0), b = seg.at(1);
+          return Math.hypot(a.nx - b.nx, a.ny - b.ny) < 0.01 && seg.len > size * 3.4;
+        }).map((seg) => seg.at(0.5));
+    const sw = stroke / size * 0.7;
+    const body = `<path d="M -1.7 0 C -0.9 0 -1.1 0.8 0 1.1 C 1.1 0.8 0.9 0 1.7 0 M -1.4 0.15 C -0.8 0.2 -0.5 0.8 0 1.1 C 0.5 0.8 0.8 0.2 1.4 0.15 M 0 1.1 C -0.7 0.65 -0.45 0.08 0 0 C 0.45 0.08 0.7 0.65 0 1.1 Z" ${strokeAttr(sw)}/><path d="M 0 0 Q -0.16 0.5 0 1.1 Q 0.16 0.5 0 0 Z" fill="#000"/>`;
+    for (const p of pts) parts.push(ornamentAt(p, size, body));
+  } else if (kind === "circuit") {
+    const sw = Math.max(1.5, stroke * 0.65);
+    const gap = Math.max(minSide * 0.021, sw * 3.8);
+    const traceCount = Math.max(2, Math.min(5, Math.floor(minSide * 0.2 / gap) + 1));
+    const trace = (pts: EdgePoint[], profile: number): string => {
+      const traceWidth = sw * [0.8, 1.05, 0.9, 1.15, 0.85][profile];
+      const viaRadius = sw * [1.15, 0.85, 1.35, 1, 0.95][profile];
+      const ringWidth = sw * [0.7, 0.6, 0.85, 0.65, 0.75][profile];
+      const via = (x: number, y: number) => `<circle cx="${n(x)}" cy="${n(y)}" r="${n(viaRadius)}" ${strokeAttr(ringWidth)}/>`;
+      const start = pts[0], end = pts[pts.length - 1];
+      const trim = (from: EdgePoint, toward: EdgePoint): EdgePoint => {
+        const length = Math.hypot(toward.x - from.x, toward.y - from.y);
+        const distance = Math.min(viaRadius + traceWidth / 2, length * 0.45);
+        return { ...from, x: from.x + (toward.x - from.x) * distance / length,
+          y: from.y + (toward.y - from.y) * distance / length };
+      };
+      const line = [trim(start, pts[1]), ...pts.slice(1, -1), trim(end, pts[pts.length - 2])];
+      return strokePath(line, strokeAttr(traceWidth), false) + via(start.x, start.y) + via(end.x, end.y);
+    };
+    // Deliberate, repeatable irregularity; the two corners have distinct rhythms.
+    const horizontalRuns = [[0.69, 0.46, 0.60, 0.35, 0.49], [0.46, 0.63, 0.34, 0.54, 0.40]];
+    const verticalRuns = [[0.35, 0.54, 0.29, 0.43, 0.24], [0.53, 0.32, 0.46, 0.26, 0.38]];
+    for (let corner = 0; corner < 2; corner++) {
+      const traces: string[] = [];
+      for (let i = 0; i < traceCount; i++) {
+        const profile = (i + corner * 2) % 5;
+        if (shape === "circle") {
+          const r = minSide / 2 - pad - i * gap;
+          const a0 = Math.PI * (0.82 + verticalRuns[corner][i] * 0.5);
+          const a1 = Math.PI * (1.2 + horizontalRuns[corner][i]);
+          const steps = Math.ceil((a1 - a0) / 0.12);
+          const pts = Array.from({ length: steps + 1 }, (_, j) => {
+            const a = a0 + (a1 - a0) * j / steps;
+            return edgePoint(w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r, 0, 0);
+          });
+          traces.push(trace(pts, profile));
+        } else {
+          const x = pad + i * gap;
+          const y = pad + i * gap;
+          const bend = Math.max(innerRadius, minSide * 0.09) + i * gap * 0.2;
+          const startY = Math.max(h * verticalRuns[corner][i] * 0.88, y + bend + gap * 1.5);
+          const endX = Math.max(w * horizontalRuns[corner][i] * 0.88, x + bend + gap * 2.5);
+          const jogX = endX - minSide * 0.08;
+          const jog = [0.3, 0, -0.25, 0.2, 0][(i + corner) % 5] * gap;
+          traces.push(trace([
+            edgePoint(x, startY, 0, 0), edgePoint(x, y + bend, 0, 0),
+            edgePoint(x + bend, y, 0, 0), edgePoint(jogX - Math.abs(jog), y, 0, 0),
+            edgePoint(jogX, y + jog, 0, 0), edgePoint(endX, y + jog, 0, 0),
+          ].filter((p, j, pts) => j === 0 || Math.hypot(p.x - pts[j - 1].x, p.y - pts[j - 1].y) > 0.01), profile));
+        }
+      }
+      parts.push(`<g${corner === 1 ? ` transform="translate(${n(w)} ${n(h)}) rotate(180)"` : ""}>${traces.join("")}</g>`);
+    }
+  } else if (kind === "schematic") {
+    const size = minSide * 0.065;
+    const segs = outlineSegs(w, h, pad + size * 0.5, innerRadius, shape);
+    let index = 0;
+    for (const seg of segs) {
+      if (seg.len < size * 3) {
+        parts.push(strokePath(Array.from({ length: 16 }, (_, k) => seg.at(k / 15)), strokeAttr(stroke * 0.7), false));
+        continue;
+      }
+      const count = Math.max(1, Math.floor(seg.len / (size * 7)));
+      for (let j = 0; j < count; j++, index++) {
+        const center = (j + 0.5) / count;
+        const half = Math.min(0.38 / count, size * 1.25 / Math.max(1, seg.len));
+        const before = Array.from({ length: 12 }, (_, k) => seg.at(j / count + (center - half - j / count) * k / 11));
+        const after = Array.from({ length: 12 }, (_, k) => seg.at(center + half + ((j + 1) / count - center - half) * k / 11));
+        parts.push(strokePath(before, strokeAttr(stroke * 0.7), false));
+        parts.push(strokePath(after, strokeAttr(stroke * 0.7), false));
+        const actualSize = half * seg.len / 1.25;
+        const sw = stroke * 0.7 / Math.max(1, actualSize);
+        const body = index % 3 === 1
+          ? `<path d="M -1.25 0 H -0.22 M -0.22 -0.55 V 0.55 M 0.22 -0.55 V 0.55 M 0.22 0 H 1.25" ${strokeAttr(sw)}/>`
+          : `<path d="M -1.25 0 H -0.9 L -0.7 -0.35 L -0.35 0.35 L 0 -0.35 L 0.35 0.35 L 0.7 -0.35 L 0.9 0 H 1.25" ${strokeAttr(sw)}/>`;
+        parts.push(ornamentAt(seg.at(center), actualSize, body));
+      }
+    }
   }
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${n(w)}" height="${n(h)}" viewBox="0 0 ${n(w)} ${n(h)}" fill="none">${parts.join("")}</svg>`;
