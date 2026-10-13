@@ -4,6 +4,10 @@
 	"type": "module",
 	"version": "2026.9.0",
 	"scripts": {
+		"predesktop:dev": "node standalone-apps/desktop/ensure-dependencies.mjs",
+		"desktop:dev": "npm --prefix standalone-apps/desktop run dev --",
+		"predesktop:build": "node standalone-apps/desktop/ensure-dependencies.mjs",
+		"desktop:build": "npm --prefix standalone-apps/desktop run build --",
 		"dev-check": "npm run sv-check && npm run dev",
 		"dev": "vite",
 		"dev-local-lib": "vite --force",

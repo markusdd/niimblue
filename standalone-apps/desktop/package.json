@@ -1,0 +1,15 @@
+{
+  "name": "niimblue-desktop",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "node build.mjs",
+    "tauri": "tauri",
+    "build-www": "npm --prefix ../.. run build -- --base=./ --outDir standalone-apps/desktop/www"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

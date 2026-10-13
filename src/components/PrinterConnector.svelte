@@ -28,6 +28,11 @@
   import type { MaterialIcon } from "material-icons";
   import FirmwareUpdater from "$/components/basic/FirmwareUpdater.svelte";
   import PrinterVerboseInfo from "$/components/PrinterVerboseInfo.svelte";
+  import NativePrinterPicker from "$/components/basic/NativePrinterPicker.svelte";
+  import { hasNativeBluetooth, NiimbotNativeBluetoothClient } from "$/utils/native_bluetooth";
+
+  const nativeBluetooth = hasNativeBluetooth();
+  let nativePickerShow = $state(false);
 
   let connectionType = $state<ConnectionType>("bluetooth");
   let featureSupport = $state<AvailableTransports>({ webBluetooth: false, webSerial: false, capacitorBle: false });
@@ -58,19 +63,24 @@
 
   const onBluetoothClicked = () => {
     switchConnectionType("bluetooth");
-    if (!featureSupport.webBluetooth) {
+    if (!nativeBluetooth && !featureSupport.webBluetooth) {
       explainMissingBluetooth();
     }
   };
 
   const onConnectClicked = async () => {
-    if (connectionType === "bluetooth" && !featureSupport.webBluetooth) {
+    if (connectionType === "bluetooth" && !nativeBluetooth && !featureSupport.webBluetooth) {
       explainMissingBluetooth();
       return;
     }
 
     initClient(connectionType);
     connectionState.set("connecting");
+
+    if ($printerClient instanceof NiimbotNativeBluetoothClient) {
+      nativePickerShow = true;
+      return;
+    }
 
     try {
       if ($printerClient instanceof NiimbotCapacitorBleClient && $automation?.autoConnectDeviceId !== undefined) {
@@ -91,7 +101,7 @@
   };
 
   const onDisconnectClicked = () => {
-    $printerClient.disconnect();
+    void $printerClient.disconnect().catch((error) => Toasts.error(error));
   };
 
   const startHeartbeat = async () => {
@@ -123,6 +133,7 @@
     featureSupport = Utils.getAvailableTransports();
 
     connectionType = LocalStoragePersistence.loadLastConnectionType() ?? "bluetooth";
+    if (nativeBluetooth) connectionType = "bluetooth";
 
     if (!featureSupport.capacitorBle && connectionType === "capacitor-ble") {
       connectionType = "bluetooth";
@@ -303,7 +314,7 @@
     <button
       disabled={$connectionState === "connecting"}
       class="btn text-nowrap {connectionType === 'bluetooth' ? 'btn-light' : 'btn-outline-secondary'}"
-      title={!featureSupport.webBluetooth ? bluetoothMissingMessage() : undefined}
+      title={!nativeBluetooth && !featureSupport.webBluetooth ? bluetoothMissingMessage() : undefined}
       onclick={onBluetoothClicked}>
       <MdIcon icon="bluetooth" />
       {$tr("connector.bluetooth")}
@@ -332,7 +343,7 @@
     <button
       class="btn btn-primary"
       disabled={$connectionState === "connecting" ||
-        (!featureSupport.capacitorBle && !featureSupport.webBluetooth && !featureSupport.webSerial)}
+        (!nativeBluetooth && !featureSupport.capacitorBle && !featureSupport.webBluetooth && !featureSupport.webSerial)}
       onclick={onConnectClicked}>
       <MdIcon icon="power" />
     </button>
@@ -348,6 +359,10 @@
     <PrinterVerboseInfo bind:show={verboseInfoShow} />
   {/if}
 </div>
+
+{#if nativePickerShow && $printerClient instanceof NiimbotNativeBluetoothClient}
+  <NativePrinterPicker client={$printerClient} bind:show={nativePickerShow} />
+{/if}
 
 <style>
   .dropdown-menu {

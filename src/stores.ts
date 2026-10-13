@@ -26,6 +26,7 @@ import {
 import { installNiimbotBluetoothConnect } from "$/utils/bluetooth_connect";
 import { installNiimbotBluetoothResponse } from "$/utils/bluetooth_response";
 import { installReportedPrinterMetadata } from "$/utils/printer_metadata";
+import { hasNativeBluetooth, NiimbotNativeBluetoothClient } from "$/utils/native_bluetooth";
 import { LocalStoragePersistence, writablePersisted } from "$/utils/persistence";
 import { APP_CONFIG_DEFAULTS, CSV_DEFAULT, OBJECT_DEFAULTS_TEXT } from "$/defaults";
 import z from "zod";
@@ -74,7 +75,9 @@ export const initClient = (connectionType: ConnectionType) => {
         prevClient.disconnect();
       }
 
-      newClient = instantiateClient(connectionType);
+      newClient = connectionType === "bluetooth" && hasNativeBluetooth()
+        ? new NiimbotNativeBluetoothClient()
+        : instantiateClient(connectionType);
 
       const conf = get(appConfig);
 

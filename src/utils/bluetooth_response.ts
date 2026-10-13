@@ -1,5 +1,6 @@
 import {
   NiimbotBluetoothClient,
+  NiimbotAbstractClient,
   NiimbotPacket,
   PrintError,
   PrinterErrorCode,
@@ -11,7 +12,7 @@ import {
 } from "@mmote/niimbluelib";
 
 /** niimbluelib 0.47 waits after writing, losing notifications during the write. */
-class ReliableBluetoothClient extends NiimbotBluetoothClient {
+export abstract class ReliablePacketClient extends NiimbotAbstractClient {
   override async sendPacketWaitResponse(packet: NiimbotPacket, timeoutMs = 1000): Promise<NiimbotPacket> {
     return this.mutex.runExclusive(async () => {
       if (packet.oneWay) {
@@ -53,6 +54,11 @@ class ReliableBluetoothClient extends NiimbotBluetoothClient {
       });
       // An error notification may arrive before sendPacket resolves.
       void response.catch(() => {});
+      const disconnected = () => {
+        received = true;
+        rejectResponse(new Error("Printer disconnected while waiting for a response"));
+      };
+      this.on("disconnect", disconnected);
       try {
         await this.sendPacket(packet, true);
         if (!received) {
@@ -64,11 +70,12 @@ class ReliableBluetoothClient extends NiimbotBluetoothClient {
       } finally {
         clearTimeout(timer);
         this.off("packetreceived", listener);
+        this.off("disconnect", disconnected);
       }
     });
   }
 }
 
 export function installNiimbotBluetoothResponse(): void {
-  NiimbotBluetoothClient.prototype.sendPacketWaitResponse = ReliableBluetoothClient.prototype.sendPacketWaitResponse;
+  NiimbotBluetoothClient.prototype.sendPacketWaitResponse = ReliablePacketClient.prototype.sendPacketWaitResponse;
 }

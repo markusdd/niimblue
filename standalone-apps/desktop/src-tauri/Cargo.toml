@@ -1,7 +1,7 @@
 [package]
 name = "niimblues"
 version = "1.0.0"
-description = "NiimBlue standalone"
+description = "NiimBlue desktop label designer with native Bluetooth"
 authors = ["MultiMote"]
 edition = "2021"
 
@@ -23,4 +23,8 @@ tauri-plugin-opener = "2"
 tauri-plugin-window-state = "2.0.0"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+btleplug = "=0.11.8"
+futures-util = "0.3"
+tokio = { version = "1", features = ["sync", "time", "rt"] }
+uuid = { version = "1", features = ["v4"] }
 

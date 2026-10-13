@@ -65,6 +65,12 @@ In some systems you need to enable Chrome `Web Bluetooth` or `Experimental Web P
 Safari: while, this browser has no native `Web Bluetooth`, there is [beacio extension](https://beacio.com/) that enables Web Bluetooth under Safari.
 Setup details available [here](https://beacio.com/setup).
 
+## Native desktop development
+
+The cross-platform desktop implementation uses Tauri and a native Rust Bluetooth
+transport. Build instructions and printer acceptance checks are in
+[standalone-apps/desktop/README.md](standalone-apps/desktop/README.md).
+
 ## Images
 
 Images may be outdated.
