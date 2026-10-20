@@ -9,6 +9,7 @@ import { FileUtils } from "$/utils/file_utils";
 import { CanvasUtils } from "$/utils/canvas_utils";
 import { markLayoutScale } from "$/fabric-object/scale_mode";
 import { TextboxExt, TextboxExtProps } from "$/fabric-object/textbox-ext";
+import { nameLayer, type LayerInfo } from "$/utils/layer_metadata";
 
 type SvgBox = { left: number; top: number; width: number; height: number };
 
@@ -32,9 +33,10 @@ export class LabelDesignerObjectHelper {
   static async addSvg(
     canvas: fabric.Canvas,
     svgCode: string,
-    opts?: { maxSide?: number; bounds?: SvgBox },
+    opts?: { maxSide?: number; bounds?: SvgBox; layerInfo?: LayerInfo },
   ): Promise<fabric.FabricObject> {
     const { obj } = await this.loadSvg(svgCode);
+    nameLayer(obj, opts?.layerInfo ?? { kind: "illustration" });
     if (opts?.maxSide && opts.maxSide > 0) {
       const longest = Math.max(obj.width || 1, obj.height || 1);
       obj.scale(opts.maxSide / longest);
@@ -58,8 +60,9 @@ export class LabelDesignerObjectHelper {
   }
 
   /** Place an SVG into a fixed paper box. Used for frames, which must not be shrunk to fit their stroke. */
-  static async placeSvg(canvas: fabric.Canvas, svgCode: string, box: SvgBox): Promise<fabric.FabricObject> {
+  static async placeSvg(canvas: fabric.Canvas, svgCode: string, box: SvgBox, frameName?: string): Promise<fabric.FabricObject> {
     const { obj, viewWidth, viewHeight } = await this.loadSvg(svgCode);
+    nameLayer(obj, { kind: "frame", name: frameName });
     // Scale by the SVG view size, then shift by whatever empty margin Fabric
     // trimmed off the group. A full-bleed group needs no shift. A group that
     // only wraps the stroke keeps that stroke on the inset it was drawn at.
@@ -84,12 +87,13 @@ export class LabelDesignerObjectHelper {
   static async addImageFile(canvas: fabric.Canvas, file: File): Promise<fabric.FabricObject | fabric.Group> {
     if (file.type.startsWith("image/svg")) {
       const data = await file.text();
-      return await this.addSvg(canvas, data);
+      return await this.addSvg(canvas, data, { layerInfo: { kind: "image", name: file.name } });
     }
 
     if (file.type === "image/png" || file.type === "image/jpeg" || file.type === "image/bmp" || file.type === "image/gif") {
       const url = await FileUtils.blobToDataUrl(file);
       const fabricImg = await fabric.FabricImage.fromURL(url);
+      nameLayer(fabricImg, { kind: "image", name: file.name });
       fabricImg.set({ ...OBJECT_DEFAULTS });
       markLayoutScale(fabricImg, "lock");
       CanvasUtils.fitObjectIntoCanvas(canvas, fabricImg, OBJECT_DEFAULTS.left, OBJECT_DEFAULTS.top);

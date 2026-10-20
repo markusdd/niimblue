@@ -61,9 +61,14 @@
             class:circle={item.shape === "circle"}
             class:rounded={item.shape === "rounded_rect"}
             class:has-thumb={!!item.thumbnail}
-            style="--pw: {aspect(item).pw}; --ph: {aspect(item).ph}; background: {paperSwatch[item.paperColor ?? 'white']};">
+            class:has-panels={!!item.panels?.length}
+            style="--pw: {aspect(item).pw}; --ph: {aspect(item).ph}; background: {item.panels?.length && !item.thumbnail ? 'transparent' : paperSwatch[item.paperColor ?? 'white']};">
             {#if item.thumbnail}
               <img src={item.thumbnail} alt="" />
+            {:else if item.panels?.length}
+              {#each item.panels as panel, index (index)}
+                <span class="panel" style="left: {panel.left * 100}%; top: {panel.top * 100}%; width: {panel.width * 100}%; height: {panel.height * 100}%; border-radius: {panel.shape === 'circle' ? '50%' : panel.shape === 'rounded_rect' ? '12%' : '0'}; background: {paperSwatch[item.paperColor ?? 'white']};"></span>
+              {/each}
             {/if}
           </span>
         </span>
@@ -195,6 +200,17 @@
   .paper.has-thumb {
     border: 0;
     box-shadow: none;
+  }
+
+  .paper.has-panels {
+    border: 0;
+    box-shadow: none;
+  }
+
+  .panel {
+    position: absolute;
+    box-sizing: border-box;
+    border: 1px solid rgba(40, 32, 22, 0.28);
   }
 
   .meta {

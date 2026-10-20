@@ -5,7 +5,7 @@ import { mmToPx } from "$/utils/label_units";
 
 export const configureFabric = () => {
   fabric.config.disableStyleCopyPaste = true;
-  for (const key of ["layoutScale", "perPixelTargetFind"]) {
+  for (const key of ["layoutScale", "perPixelTargetFind", "layerInfo"]) {
     if (!fabric.FabricObject.customProperties.includes(key)) {
       fabric.FabricObject.customProperties.push(key);
     }

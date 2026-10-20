@@ -11,7 +11,10 @@
   import { ArUcoMarker } from "$/fabric-object/aruco";
   import { Barcode } from "$/fabric-object/barcode";
   import { QRCode } from "$/fabric-object/qrcode";
-  import type { BorderKind } from "$/utils/label_borders";
+  import { BORDER_KINDS, type BorderKind } from "$/utils/label_borders";
+  import { isFrameGroup } from "$/fabric-object/scale_mode";
+  import { readableLayerDetail, type NamedLayer } from "$/utils/layer_metadata";
+  import { iconCodepoints } from "$/styles/mdi_icons";
 
   interface InsertItem {
     type: OjectType;
@@ -28,8 +31,8 @@
     frameOpen: boolean;
     onToggleFrames: () => void;
     onIcon: (icon: MaterialIcon) => void;
-    onSvgIcon: (svg: string) => void;
-    onClipart: (svg: string) => void;
+    onSvgIcon: (svg: string, name?: string) => void;
+    onClipart: (svg: string, name?: string) => void;
     onFrame: (kind: BorderKind) => void;
     zplImageReady: (img: Blob) => void;
     pdfImageReady: (img: HTMLCanvasElement) => void;
@@ -69,25 +72,38 @@
   ];
 
   const layerName = (obj: fabric.FabricObject): string => {
+    const info = (obj as NamedLayer).layerInfo;
+    const detail = (label: string, name?: string) => name ? `${label} · ${readableLayerDetail(name)}` : label;
+    if (info?.kind === "frame") {
+      const name = BORDER_KINDS.includes(info.name as BorderKind)
+        ? $tr(`editor.frames.${info.name}` as TranslationKey) : info.name;
+      return detail($tr("shell.layer.frame"), name);
+    }
+    if (info?.kind === "clipart") return detail($tr("editor.iconpicker.source.clipart"), info.name);
+    if (info?.kind === "icon") return detail($tr("shell.layer.icon"), info.name);
+    if (info?.kind === "image") return detail($tr("editor.objectpicker.image"), info.name);
+    if (info?.kind === "illustration") return $tr("shell.layer.illustration");
+    if (isFrameGroup(obj)) return $tr("shell.layer.frame");
     if (obj instanceof QRCode) {
-      return $tr("editor.objectpicker.qrcode");
+      return detail($tr("editor.objectpicker.qrcode"), obj.text);
     }
     if (obj instanceof Barcode) {
-      return $tr("editor.objectpicker.barcode");
+      return detail($tr("editor.objectpicker.barcode"), obj.text);
     }
     if (obj instanceof ArUcoMarker) {
-      return $tr("editor.objectpicker.aruco");
+      return detail($tr("editor.objectpicker.aruco"), `${obj.dictionary} / ${obj.markerId}`);
     }
     if (obj instanceof fabric.Textbox || obj instanceof fabric.IText) {
       const text = obj.text?.trim().split("\n")[0] ?? "";
-      return text.slice(0, 28) || $tr("editor.objectpicker.text");
+      return text || $tr("editor.objectpicker.text");
     }
     if (obj instanceof fabric.FabricText) {
       if (obj.fontFamily === "Material Icons") {
-        return $tr("shell.icons");
+        const name = Object.entries(iconCodepoints).find(([, code]) => code === obj.text.codePointAt(0))?.[0];
+        return detail($tr("shell.layer.icon"), name);
       }
       const text = obj.text?.trim().split("\n")[0] ?? "";
-      return text.slice(0, 28) || $tr("editor.objectpicker.text");
+      return text || $tr("editor.objectpicker.text");
     }
     if (obj instanceof fabric.FabricImage) {
       return $tr("editor.objectpicker.image");
@@ -101,10 +117,18 @@
     if (obj instanceof fabric.Polyline || obj instanceof fabric.Line) {
       return $tr("editor.objectpicker.line");
     }
+    if (obj instanceof fabric.Group || obj.type === "group") {
+      return `${$tr("shell.layer.group")} (${(obj as fabric.Group).getObjects().length})`;
+    }
+    if (obj instanceof fabric.Path || obj.type === "path") return $tr("shell.layer.illustration");
     return $tr("shell.layer.object");
   };
 
   const layerIcon = (obj: fabric.FabricObject): MaterialIcon => {
+    const kind = (obj as NamedLayer).layerInfo?.kind;
+    if (kind === "frame" || isFrameGroup(obj)) return "border_outer";
+    if (kind === "icon" || kind === "clipart") return "emoji_emotions";
+    if (kind === "image" || kind === "illustration") return "image";
     if (obj instanceof QRCode) return "qr_code_2";
     if (obj instanceof Barcode) return "view_week";
     if (obj instanceof ArUcoMarker) return "grid_on";
@@ -113,11 +137,13 @@
     if (obj instanceof fabric.Rect) return "crop_square";
     if (obj instanceof fabric.Polyline || obj instanceof fabric.Line) return "horizontal_rule";
     if (obj instanceof fabric.FabricText && obj.fontFamily === "Material Icons") return "emoji_emotions";
+    if (obj instanceof fabric.Group || obj.type === "group") return "layers";
+    if (obj instanceof fabric.Path || obj.type === "path") return "image";
     return "title";
   };
 
   let layers = $derived.by(() => {
-    layersRevision;
+    void layersRevision;
     return canvas?.getObjects().slice().reverse() ?? [];
   });
 
@@ -190,6 +216,7 @@
         class="layer-item"
         class:active={selectedObject === obj}
         type="button"
+        title={layerName(obj)}
         onclick={() => selectLayer(obj)}>
         <MdIcon icon={layerIcon(obj)} />
         <span>{layerName(obj)}</span>

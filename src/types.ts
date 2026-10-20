@@ -9,6 +9,16 @@ export type LabelUnit = "mm" | "px";
 export type OjectType = "text" | "rectangle" | "line" | "circle" | "image" | "qrcode" | "barcode" | "aruco" | "pdf";
 export type MoveDirection = "up" | "down" | "left" | "right";
 export type LabelShape = "rect" | "rounded_rect" | "circle";
+export const LabelPanelSchema = z.object({
+  left: z.number().min(0).max(1),
+  top: z.number().min(0).max(1),
+  width: z.number().positive().max(1),
+  height: z.number().positive().max(1),
+  shape: z.enum(["rect", "rounded_rect", "circle"]).optional(),
+}).refine((panel) => panel.left + panel.width <= 1 && panel.top + panel.height <= 1, {
+  message: "Panel must fit inside the label",
+});
+export type LabelPanel = z.infer<typeof LabelPanelSchema>;
 export type LabelSplit = "none" | "vertical" | "horizontal";
 export type TailPosition = "right" | "bottom" | "left" | "top";
 export type MirrorType = "none" | "copy" | "flip";
@@ -46,6 +56,7 @@ export const LabelPropsSchema = z.object({
     height: z.number().positive(),
   }),
   shape: z.enum(["rect", "rounded_rect", "circle"]).default("rect").optional(),
+  panels: z.array(LabelPanelSchema).max(32).optional(),
   split: z.enum(["none", "vertical", "horizontal"]).default("none").optional(),
   splitParts: z.number().min(1).default(2).optional(),
   tailPos: z.enum(["right", "bottom", "left", "top"]).default("right").optional(),
@@ -68,6 +79,7 @@ export const LabelPresetSchema = z.object({
   printDirection: z.enum(["left", "top"]),
   title: z.string().optional(),
   shape: z.enum(["rect", "rounded_rect", "circle"]).default("rect").optional(),
+  panels: z.array(LabelPanelSchema).max(32).optional(),
   split: z.enum(["none", "vertical", "horizontal"]).default("none").optional(),
   splitParts: z.number().min(1).default(2).optional(),
   tailPos: z.enum(["right", "bottom", "left", "top"]).default("right").optional(),

@@ -39,6 +39,8 @@
   import { formatMm, formatMmValue, labelPropsFromPreset } from "$/utils/label_units";
   import { borderSvg, type BorderKind } from "$/utils/label_borders";
   import { svgForPrint } from "$/data/clipart";
+  import { nameLayer } from "$/utils/layer_metadata";
+  import { panelBoxes, turnPanels } from "$/utils/label_panels";
   import {
     detectLoadedRoll,
     labelPropsFromRoll,
@@ -224,6 +226,7 @@
     onUpdateLabelProps({
       ...labelProps,
       quarterTurns: turns,
+      panels: turnPanels(labelProps.panels),
       size: { width: labelProps.size.height, height: labelProps.size.width },
       tailPos: rotateTail(labelProps.tailPos ?? "right", 1),
       split: labelProps.shape === "circle" ? "none" : rotateSplit(labelProps.split ?? "none", 1),
@@ -304,10 +307,11 @@
 
   const onIconPicked = (i: MaterialIcon) => {
     // todo: icon is not vertically centered
-    LabelDesignerObjectHelper.addStaticText(fabricCanvas!, String.fromCodePoint(iconCodepoints[i]), {
+    const obj = LabelDesignerObjectHelper.addStaticText(fabricCanvas!, String.fromCodePoint(iconCodepoints[i]), {
       fontFamily: "Material Icons",
       fontSize: 100,
     });
+    nameLayer(obj, { kind: "icon", name: i });
     undo.push(fabricCanvas!, labelProps);
     bumpLayers();
   };
@@ -325,7 +329,7 @@
 
   const paperBox = () => {
     const bounds = fabricCanvas!.getLabelBounds();
-    if ((labelProps.shape ?? "rect") === "circle") {
+    if ((labelProps.panels?.[0]?.shape ?? labelProps.shape ?? "rect") === "circle") {
       const diameter = Math.min(bounds.width, bounds.height);
       return {
         left: bounds.startX + (bounds.width - diameter) / 2,
@@ -344,17 +348,17 @@
     bumpLayers();
   };
 
-  const onSvgIconPicked = (svg: string) => {
-    void LabelDesignerObjectHelper.addSvg(fabricCanvas!, svg)
+  const onSvgIconPicked = (svg: string, name?: string) => {
+    void LabelDesignerObjectHelper.addSvg(fabricCanvas!, svg, { layerInfo: { kind: "icon", name } })
       .then(keepInserted)
       .catch((e) => Toasts.error(e));
   };
 
-  const onClipartPicked = (svg: string) => {
+  const onClipartPicked = (svg: string, name?: string) => {
     const canvas = fabricCanvas!;
     const bounds = paperBox();
     const maxSide = Math.round(Math.min(bounds.width, bounds.height) * 0.38);
-    void LabelDesignerObjectHelper.addSvg(canvas, svgForPrint(svg), { maxSide, bounds })
+    void LabelDesignerObjectHelper.addSvg(canvas, svgForPrint(svg), { maxSide, bounds, layerInfo: { kind: "clipart", name } })
       .then(keepInserted)
       .catch((e) => Toasts.error(e));
   };
@@ -362,10 +366,44 @@
   const onFramePicked = (kind: BorderKind) => {
     const canvas = fabricCanvas!;
     const box = paperBox();
-    const svg = borderSvg(kind, box.width, box.height, labelProps.shape ?? "rect");
-    void LabelDesignerObjectHelper.placeSvg(canvas, svg, box)
+    const svg = borderSvg(kind, box.width, box.height, labelProps.panels?.[0]?.shape ?? labelProps.shape ?? "rect");
+    void LabelDesignerObjectHelper.placeSvg(canvas, svg, box, kind)
       .then(keepInserted)
       .catch((e) => Toasts.error(e));
+  };
+
+  const repeatPanels = () => {
+    const copy = async () => {
+      const canvas = fabricCanvas;
+      if (!canvas) return;
+      const [first, ...others] = panelBoxes(labelProps);
+      if (!first || !others.length) return;
+      const originals = canvas.getObjects().filter((object) => {
+        const centre = object.getCenterPoint();
+        return centre.x >= first.left && centre.x <= first.left + first.width
+          && centre.y >= first.top && centre.y <= first.top + first.height;
+      });
+      const copies = await Promise.all(others.flatMap((panel) => originals.map(async (object) => {
+        const clone = await object.clone();
+        const centre = object.getCenterPoint();
+        const scale = Math.min(panel.width / first.width, panel.height / first.height);
+        clone.scaleX *= scale;
+        clone.scaleY *= scale;
+        clone.setPositionByOrigin(new fabric.Point(
+          panel.left + panel.width / 2 + (centre.x - first.left - first.width / 2) * scale,
+          panel.top + panel.height / 2 + (centre.y - first.top - first.height / 2) * scale,
+        ), "center", "center");
+        clone.setCoords();
+        return clone;
+      })));
+      if (copies.length) {
+        canvas.add(...copies);
+        canvas.requestRenderAll();
+        undo.push(canvas, labelProps);
+        bumpLayers();
+      }
+    };
+    void copy().catch((error) => Toasts.error(error));
   };
 
   const openPreview = () => {
@@ -882,6 +920,7 @@
         {labelProps}
         onUpdateLabelProps={onUpdateLabelProps}
         onRotate={rotateLabel}
+        onRepeatPanels={repeatPanels}
         loadedRoll={rollDiffers ? printerRoll : undefined}
         onUseLoadedRoll={useLoadedRoll}
         getCanvas={getCanvasForPreview}

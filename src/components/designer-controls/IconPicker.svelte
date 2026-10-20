@@ -11,8 +11,8 @@
 
   interface Props {
     onSubmit: (i: MaterialIcon) => void;
-    onSubmitSvg: (i: string) => void;
-    onClipart: (svg: string) => void;
+    onSubmitSvg: (i: string, name?: string) => void;
+    onClipart: (svg: string, name?: string) => void;
     embedded?: boolean;
   }
 
@@ -90,7 +90,7 @@
       userIcons.update((prev) => prev.filter((e) => e.name !== name));
       return;
     }
-    onSubmitSvg(data);
+    onSubmitSvg(data, name);
   };
 </script>
 
@@ -127,7 +127,7 @@
         {#if loading}<p class="credit" role="status">{$tr("editor.iconpicker.loading")}</p>{/if}
         <div class="icons">
           {#each clipartHits as item (item.id)}
-            <button type="button" class="glyph" data-clipart={item.id} title={item.id} onclick={() => onClipart(item.svg)}>
+            <button type="button" class="glyph" data-clipart={item.id} title={item.id} onclick={() => onClipart(item.svg, item.id)}>
               <img alt="" src={svgUrl(item.svg)} />
             </button>
           {/each}

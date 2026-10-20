@@ -1,7 +1,8 @@
 import * as fabric from "fabric";
 import type { LabelProps } from "$/types";
+import { panelBoxes } from "./label_panels";
 
-type FitLabel = Pick<LabelProps, "size" | "shape" | "tailPos" | "tailLength">;
+type FitLabel = Pick<LabelProps, "size" | "shape" | "tailPos" | "tailLength" | "panels">;
 
 export type FitMap = {
   scale: number;
@@ -13,6 +14,8 @@ export type FitMap = {
 
 /** Printable body, tail excluded. Origin is the top-left of the label. */
 export function paperBody(props: FitLabel): { left: number; top: number; width: number; height: number } {
+  const panel = panelBoxes(props)[0];
+  if (panel) return panel;
   const tail = Math.max(0, props.tailLength ?? 0);
   const pos = props.tailPos ?? "right";
   let left = 0;
@@ -43,7 +46,7 @@ export function paperBody(props: FitLabel): { left: number; top: number; width: 
  */
 export function fitFrame(props: FitLabel): { left: number; top: number; width: number; height: number } {
   const body = paperBody(props);
-  if (props.shape !== "circle") return body;
+  if ((props.panels?.[0]?.shape ?? props.shape) !== "circle") return body;
   const side = Math.min(body.width, body.height) / Math.SQRT2;
   return {
     left: body.left + (body.width - side) / 2,
@@ -71,10 +74,26 @@ export function fitMapping(from: FitLabel, to: FitLabel): FitMap | null {
 
 /** Keep the layout's proportions and place it as large as the new label allows. */
 export function fitObjectsToLabel(objects: fabric.FabricObject[], from: LabelProps, to: LabelProps) {
-  const map = fitMapping(from, to);
-  if (!map || objects.length === 0) return;
+  if (objects.length === 0) return;
+  const sourcePanels = panelBoxes(from);
+  const targetPanels = panelBoxes(to);
   for (const obj of objects) {
     const center = obj.getPointByOrigin("center", "center");
+    let source = from;
+    let target = to;
+    if (sourcePanels.length > 1 && targetPanels.length > 1) {
+      const found = sourcePanels.findIndex((panel) => center.x >= panel.left && center.x <= panel.left + panel.width
+        && center.y >= panel.top && center.y <= panel.top + panel.height);
+      const sourceIndex = Math.max(0, found);
+      const targetIndex = Math.min(sourceIndex, targetPanels.length - 1);
+      source = { ...from, panels: [from.panels![sourceIndex]] };
+      target = { ...to, panels: [to.panels![targetIndex]] };
+    } else if (sourcePanels.length > 1) {
+      // Keep the whole multi-label design when switching back to ordinary paper.
+      source = { ...from, panels: undefined };
+    }
+    const map = fitMapping(source, target);
+    if (!map) continue;
     obj.scaleX = (obj.scaleX || 1) * map.scale;
     obj.scaleY = (obj.scaleY || 1) * map.scale;
     if (obj.strokeUniform && typeof obj.strokeWidth === "number" && obj.strokeWidth > 0) {

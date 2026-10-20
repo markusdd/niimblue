@@ -1,4 +1,5 @@
 import * as fabric from "fabric";
+import { panelBoxes } from "$/utils/label_panels";
 import { DEFAULT_LABEL_PROPS, GRID_SIZE } from "$/defaults";
 import type { LabelProps } from "$/types";
 import { isFrameGroup, prepareObjectScale } from "$/fabric-object/scale_mode";
@@ -167,8 +168,6 @@ export class CustomCanvas extends fabric.Canvas {
               x: (touch1.clientX + touch2.clientX) / 2,
               y: (touch1.clientY + touch2.clientY) / 2,
             };
-          } else if (e.touches.length === 1) {
-
           }
         },
         { passive: false },
@@ -362,6 +361,21 @@ export class CustomCanvas extends fabric.Canvas {
     const { width, height } = this.labelSize();
     ctx.beginPath();
 
+    if (this.labelProps.panels?.length) {
+      for (const panel of panelBoxes(this.labelProps)) {
+        if (panel.shape === "circle") {
+          const radius = Math.min(panel.width, panel.height) / 2;
+          ctx.moveTo(panel.left + panel.width / 2 + radius, panel.top + panel.height / 2);
+          ctx.arc(panel.left + panel.width / 2, panel.top + panel.height / 2, radius, 0, Math.PI * 2);
+        } else if (panel.shape === "rounded_rect") {
+          ctx.roundRect(panel.left, panel.top, panel.width, panel.height, Math.min(panel.width, panel.height) * 0.12);
+        } else {
+          ctx.rect(panel.left, panel.top, panel.width, panel.height);
+        }
+      }
+      return;
+    }
+
     if (this.labelProps.shape === "circle") {
       const radius = Math.min(width, height) / 2;
       ctx.arc(width / 2, height / 2, radius, 0, Math.PI * 2);
@@ -501,6 +515,14 @@ export class CustomCanvas extends fabric.Canvas {
 
   /** Get label bounds without tail */
   getLabelBounds(): LabelBounds {
+    const panel = panelBoxes(this.labelProps)[0];
+    if (panel) {
+      return {
+        startX: panel.left, startY: panel.top,
+        endX: panel.left + panel.width, endY: panel.top + panel.height,
+        width: panel.width, height: panel.height,
+      };
+    }
     const size = this.labelSize();
     let endX = size.width;
     let endY = size.height;
@@ -525,6 +547,7 @@ export class CustomCanvas extends fabric.Canvas {
 
   /** Get fold line position for splitted labels */
   getFoldInfo(): FoldInfo {
+    if ((this.labelProps.panels?.length ?? 0) > 1) return { axis: "none", points: [], segments: [] };
     const bb = this.getLabelBounds();
     const points: number[] = [];
     const segments: FoldSegment[] = [];
@@ -639,7 +662,17 @@ export class CustomCanvas extends fabric.Canvas {
 
     try {
       // Objects draw past the paper so a smaller label does not hide them.
-      super._renderObjects(ctx, objects);
+      ctx.save();
+      try {
+        // Die-cut gutters and tails must stay blank in the actual print bitmap.
+        if (!this.customBackground && this.labelProps.panels?.length) {
+          this.tracePaperPath(ctx);
+          ctx.clip();
+        }
+        super._renderObjects(ctx, objects);
+      } finally {
+        ctx.restore();
+      }
 
       if (!this.highlightMirror || this.getActiveObjects().length > 1) {
         return;
@@ -744,6 +777,14 @@ export class CustomCanvas extends fabric.Canvas {
 
   /** Centers object horizontally in the canvas or label part */
   override centerObjectH(object: fabric.FabricObject): void {
+    const panels = panelBoxes(this.labelProps);
+    if (panels.length > 1) {
+      const pos = object.getPointByOrigin("center", "center");
+      const panel = panels.find((item) => pos.x >= item.left && pos.x <= item.left + item.width && pos.y >= item.top && pos.y <= item.top + item.height) ?? panels[0];
+      pos.setX(panel.left + panel.width / 2);
+      object.setPositionByOrigin(pos, "center", "center");
+      return;
+    }
     if ((this.labelProps.split ?? "none") !== "none") {
       const pos = object.getPointByOrigin("center", "center");
       const bounds = this.getLabelBounds();
@@ -771,6 +812,14 @@ export class CustomCanvas extends fabric.Canvas {
 
   /** Centers object vertically in the canvas or label part */
   override centerObjectV(object: fabric.FabricObject): void {
+    const panels = panelBoxes(this.labelProps);
+    if (panels.length > 1) {
+      const pos = object.getPointByOrigin("center", "center");
+      const panel = panels.find((item) => pos.x >= item.left && pos.x <= item.left + item.width && pos.y >= item.top && pos.y <= item.top + item.height) ?? panels[0];
+      pos.setY(panel.top + panel.height / 2);
+      object.setPositionByOrigin(pos, "center", "center");
+      return;
+    }
     if ((this.labelProps.split ?? "none") !== "none") {
       const pos = object.getPointByOrigin("center", "center");
       const bounds = this.getLabelBounds();

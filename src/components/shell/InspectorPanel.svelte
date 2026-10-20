@@ -20,6 +20,7 @@
     labelProps: LabelProps;
     onUpdateLabelProps: (props: LabelProps, fit?: boolean) => void;
     onRotate: () => void;
+    onRepeatPanels?: () => void;
     loadedRoll?: { widthMm: number; heightMm: number; tailMm: number; shape: LabelShape };
     onUseLoadedRoll?: () => void;
     getCanvas?: () => FabricJson;
@@ -37,6 +38,7 @@
     labelProps,
     onUpdateLabelProps,
     onRotate,
+    onRepeatPanels,
     loadedRoll,
     onUseLoadedRoll,
     getCanvas,
@@ -53,7 +55,7 @@
   let tab = $state<"label" | "selection">("label");
 
   $effect(() => {
-    selectedObject;
+    void selectedObject;
     tab = selectedCount > 0 ? "selection" : "label";
   });
 </script>
@@ -80,6 +82,7 @@
     {labelProps}
     onChange={onUpdateLabelProps}
     {onRotate}
+    {onRepeatPanels}
     {loadedRoll}
     {onUseLoadedRoll}
     {getCanvas}

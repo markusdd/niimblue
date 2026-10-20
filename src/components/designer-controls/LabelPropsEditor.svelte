@@ -8,6 +8,7 @@
     type InkColor,
     type LabelPreset,
     type LabelProps,
+    type LabelPanel,
     type LabelShape,
     type LabelSplit,
     type LabelUnit,
@@ -29,12 +30,15 @@
   import { formatMm, formatMmValue, mmToPx, normalizeLabelPresets, presetIdentity, pxToEditableMm, pxToMm } from "$/utils/label_units";
   import { normalizeTurns, swapIfOdd } from "$/utils/label_orientation";
   import { inkSwatch, paperSwatch } from "$/utils/label_colors";
+  import { paperBody } from "$/utils/label_fit";
   import type { TranslationKey } from "$/utils/i18n";
+  import { LABEL_STOCK, STOCK_FAMILIES, labelPropsForStock, stockPanelGap, stockPanels, type LabelStock, type StockFamily } from "$/data/label_stock";
 
   interface Props {
     labelProps: LabelProps;
     onChange: (newProps: LabelProps, fit?: boolean) => void;
     onRotate?: () => void;
+    onRepeatPanels?: () => void;
     loadedRoll?: { widthMm: number; heightMm: number; tailMm: number; shape: LabelShape };
     onUseLoadedRoll?: () => void;
     /** Current design, including objects. Used when saving a template. */
@@ -46,7 +50,7 @@
     embedded?: boolean;
   }
 
-  let { labelProps, onChange, onRotate, loadedRoll, onUseLoadedRoll, getCanvas, capturePreview, onPresetSelected, embedded = false }: Props = $props();
+  let { labelProps, onChange, onRotate, onRepeatPanels, loadedRoll, onUseLoadedRoll, getCanvas, capturePreview, onPresetSelected, embedded = false }: Props = $props();
 
   const shapeKey = (value: LabelShape | undefined): TranslationKey => {
     if (value === "circle") return "shell.shape.circle";
@@ -75,6 +79,73 @@
   let tailPos = $state<TailPosition>("right");
   let mirror = $state<MirrorType>("none");
   let previewTicket = 0;
+  let selectedStock = $state("");
+  let panels = $state<LabelPanel[] | undefined>();
+  let panelGap = $state(0);
+  let cellWidth = $state(0);
+  let cellHeight = $state(0);
+  const activeStock = $derived(LABEL_STOCK.find((item) => item.id === selectedStock));
+  const stockFamilyKey = (family: StockFamily): TranslationKey => `params.label.stock.${family}` as TranslationKey;
+  const stockCaption = (stock: LabelStock): string => {
+    const size = stock.dimensionText ?? `${stock.shape === "circle" ? `Ø ${formatMmValue(stock.widthMm)}` : `${formatMmValue(stock.widthMm)} × ${formatMmValue(stock.heightMm)}`} ${$tr("params.label.mm")}`;
+    const kind = stock.kind && stock.kind !== "round" ? $tr(`params.label.stock.${stock.kind}` as TranslationKey) : $tr(shapeKey(stock.shape));
+    return `${kind} · ${size}`;
+  };
+
+  const chooseStock = (id: string) => {
+    const stock = LABEL_STOCK.find((item) => item.id === id);
+    selectedStock = id;
+    if (!stock) return;
+    const next = labelPropsForStock(stock, labelProps);
+    prevUnit = "mm";
+    unit = "mm";
+    width = stock.widthMm;
+    height = stock.heightMm;
+    shape = stock.shape;
+    printDirection = stock.printDirection;
+    split = next.split ?? "none";
+    splitParts = next.splitParts ?? 2;
+    tailLength = stock.tailMm ?? 0;
+    tailPos = next.tailPos ?? "right";
+    mirror = next.mirror ?? "none";
+    panels = next.panels;
+    panelGap = stockPanelGap(stock);
+    cellWidth = stock.cell?.widthMm ?? 0;
+    cellHeight = stock.cell?.heightMm ?? 0;
+    onChange(next, true);
+  };
+
+  const changePanelGap = () => {
+    if (!activeStock?.cell || !Number.isFinite(panelGap)) return;
+    if (!Number.isFinite(cellWidth) || !Number.isFinite(cellHeight)) return;
+    cellWidth = Math.min(activeStock.widthMm / activeStock.cell.count, Math.max(0.1, cellWidth));
+    cellHeight = Math.min(activeStock.heightMm, Math.max(0.1, cellHeight));
+    const maxGap = (activeStock.widthMm - cellWidth * activeStock.cell.count) / (activeStock.cell.count - 1);
+    panelGap = Math.min(Math.max(0, panelGap), Math.max(0, maxGap));
+    panels = stockPanels({ ...activeStock, cell: { ...activeStock.cell, widthMm: cellWidth, heightMm: cellHeight } }, panelGap);
+    onChange({ ...labelProps, panels }, true);
+  };
+
+  const useSingleLabel = () => {
+    panels = undefined;
+    selectedStock = "";
+    split = "none";
+    tailLength = 0;
+    mirror = "none";
+    onChange({ ...labelProps, panels: undefined, split: "none", tailLength: 0, mirror: "none" }, true);
+  };
+
+  $effect(() => {
+    const stock = LABEL_STOCK.find((item) => item.id === selectedStock);
+    if (!stock) return;
+    const draftWidth = unit === "mm" ? mmToPx(width) : width;
+    const draftHeight = unit === "mm" ? mmToPx(height) : height;
+    if (draftWidth !== mmToPx(stock.widthMm) || draftHeight !== mmToPx(stock.heightMm)
+      || shape !== stock.shape || printDirection !== stock.printDirection
+      || split !== (stock.split ?? "none")
+      || Math.abs((unit === "mm" ? tailLength : pxToMm(tailLength)) - (stock.tailMm ?? 0)) > 0.1
+      || tailPos !== (stock.tailPos ?? "right") || mirror !== "none") selectedStock = "";
+  });
 
   const replacesPreset = $derived.by(() => {
     const name = title?.trim();
@@ -132,17 +203,28 @@
   };
 
   const applyWith = (quarterTurns: number | undefined) => {
+    const size = { width: toDesignPx(width), height: toDesignPx(height) };
+    let tail = shape === "circle" ? 0 : toDesignLength(tailLength);
+    if (panels?.length === 1) {
+      const extent = tailPos === "left" || tailPos === "right" ? size.width : size.height;
+      tail = Math.min(tail, Math.max(0, extent - 1));
+    }
+    let nextPanels = panels;
+    if (panels?.length === 1 && (tail > 0 || (labelProps.tailLength ?? 0) > 0)) {
+      if (tail > 0) {
+        const body = paperBody({ size, shape, tailPos, tailLength: tail });
+        nextPanels = [{ left: body.left / size.width, top: body.top / size.height, width: body.width / size.width, height: body.height / size.height, shape }];
+      } else nextPanels = undefined;
+    }
     onChange({
       printDirection: printDirection,
-      size: {
-        width: toDesignPx(width),
-        height: toDesignPx(height),
-      },
+      size,
       shape,
+      panels: nextPanels,
       split: shape === "circle" ? "none" : split,
       splitParts,
       tailPos,
-      tailLength: toDesignLength(tailLength),
+      tailLength: tail,
       mirror,
       quarterTurns: normalizeTurns(quarterTurns),
       ...(labelProps.paperColor ? { paperColor: labelProps.paperColor } : {}),
@@ -176,6 +258,7 @@
     height = preset.height;
     title = preset.title ?? "";
     shape = preset.shape ?? "rect";
+    panels = preset.panels;
     split = preset.split ?? "none";
     splitParts = preset.splitParts ?? 2;
     tailPos = preset.tailPos ?? "right";
@@ -201,6 +284,7 @@
     const ticket = ++previewTicket;
     const pending = labelPresets.filter((preset) => preset.canvas && !preset.thumbnail);
     if (pending.length === 0) return;
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Local accumulator, not reactive state.
     const updates = new Map<string, string>();
     for (const preset of pending) {
       if (ticket !== previewTicket) return;
@@ -239,6 +323,7 @@
       height: pxToEditableMm(labelProps.size.height),
       title: title?.trim() || undefined,
       shape: labelProps.shape ?? "rect",
+      panels: labelProps.panels,
       split: labelProps.shape === "circle" ? "none" : (labelProps.split ?? "none"),
       splitParts: labelProps.splitParts ?? 2,
       tailPos: labelProps.tailPos ?? "right",
@@ -284,6 +369,7 @@
   const fillWithCurrentParams = () => {
     printDirection = labelProps.printDirection;
     shape = labelProps.shape ?? "rect";
+    panels = labelProps.panels;
     split = labelProps.split ?? "none";
     splitParts = labelProps.splitParts ?? 2;
     tailPos = labelProps.tailPos ?? "right";
@@ -375,15 +461,15 @@
   });
 
   $effect(() => {
-    labelProps.printDirection;
-    labelProps.size.width;
-    labelProps.size.height;
-    labelProps.shape;
-    labelProps.split;
-    labelProps.splitParts;
-    labelProps.tailPos;
-    labelProps.tailLength;
-    labelProps.mirror;
+    void labelProps.printDirection;
+    void labelProps.size.width;
+    void labelProps.size.height;
+    void labelProps.shape;
+    void labelProps.split;
+    void labelProps.splitParts;
+    void labelProps.tailPos;
+    void labelProps.tailLength;
+    void labelProps.mirror;
     fillWithCurrentParams();
   });
 
@@ -453,6 +539,51 @@
         presets={labelPresets}
         onItemSelected={onLabelPresetSelected}
         onItemDelete={onLabelPresetDelete} />
+
+      <div class="mb-2">
+        <label class="form-label d-block small mb-0">
+          {$tr("params.label.stock.title")}
+          <select class="form-select form-select-sm mt-1" value={selectedStock} onchange={(event) => chooseStock(event.currentTarget.value)}>
+            <option value="">{$tr("params.label.stock.custom")}</option>
+            {#each STOCK_FAMILIES as family (family)}
+              <optgroup label={$tr(stockFamilyKey(family))}>
+                {#each LABEL_STOCK.filter((item) => item.family === family) as stock (stock.id)}
+                  <option value={stock.id}>
+                    {stockCaption(stock)}
+                  </option>
+                {/each}
+              </optgroup>
+            {/each}
+          </select>
+        </label>
+        <div class="form-text small">{$tr("params.label.stock.hint")}</div>
+        {#if activeStock?.cell}
+          {#if activeStock.cell.nominal}
+            <label class="form-label d-block small mt-2">
+              {$tr("params.label.stock.cell_size")}
+              <span class="input-group input-group-sm">
+                <input class="form-control" aria-label={$tr("params.label.stock.cell_width")} type="number" min="0.1" max={activeStock.widthMm / activeStock.cell.count} step="0.1" bind:value={cellWidth} onchange={changePanelGap} />
+                <span class="input-group-text">×</span>
+                <input class="form-control" aria-label={$tr("params.label.stock.cell_height")} type="number" min="0.1" max={activeStock.heightMm} step="0.1" bind:value={cellHeight} onchange={changePanelGap} />
+              </span>
+            </label>
+            <div class="form-text small">{$tr("params.label.stock.cell_hint")}</div>
+          {/if}
+          <label class="form-label d-block small mt-2">
+            {$tr("params.label.stock.gap")}
+            <input class="form-control form-control-sm" type="number" min="0" step="0.1"
+              max={(activeStock.widthMm - cellWidth * activeStock.cell.count) / (activeStock.cell.count - 1)}
+              bind:value={panelGap} onchange={changePanelGap} />
+          </label>
+          <div class="form-text small">{$tr("params.label.stock.gap_hint")}</div>
+        {/if}
+        {#if panels?.length}
+          {#if panels.length > 1 && onRepeatPanels}
+            <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick={onRepeatPanels}>{$tr("params.label.stock.repeat")}</button>
+          {/if}
+          <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick={useSingleLabel}>{$tr("params.label.stock.single")}</button>
+        {/if}
+      </div>
 
       <div class="input-group flex-nowrap input-group-sm mb-2">
         <span class="input-group-text">{$tr("params.label.size")}</span>
@@ -534,6 +665,7 @@
         {/each}
       </div>
 
+      {#if (panels?.length ?? 0) < 2}
       <div class="input-group flex-nowrap input-group-sm label-shape-switch mb-2" role="group">
         <span class="input-group-text w-100">{$tr("params.label.shape")}</span>
         {#each labelShapes as v (v)}
@@ -552,7 +684,8 @@
         {/each}
       </div>
 
-      {#if shape !== "circle"}
+      {/if}
+      {#if shape !== "circle" && (panels?.length ?? 0) < 2}
         <div class="input-group flex-nowrap input-group-sm label-split-switch mb-2" role="group">
           <span class="input-group-text w-100">{$tr("params.label.split")}</span>
           {#each labelSplits as v (v)}
@@ -578,7 +711,7 @@
         {/if}
       {/if}
 
-      {#if split !== "none"}
+      {#if split !== "none" && (panels?.length ?? 0) < 2}
         <div class="input-group flex-nowrap input-group-sm mirror-switch mb-2" role="group">
           <span class="input-group-text w-100">{$tr("params.label.mirror")}</span>
           {#each mirrorTypes as v (v)}

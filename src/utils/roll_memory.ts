@@ -1,6 +1,6 @@
 import { LabelType, type CombinedRfidInfo, type RfidInfo } from "@mmote/niimbluelib";
 import { z } from "zod";
-import { paperColors, type LabelProps, type LabelShape, type LabelSplit, type MirrorType, type PaperColor, type TailPosition } from "$/types";
+import { LabelPanelSchema, paperColors, type LabelPanel, type LabelProps, type LabelShape, type LabelSplit, type MirrorType, type PaperColor, type TailPosition } from "$/types";
 import { mmToPx, pxToEditableMm } from "$/utils/label_units";
 import { normalizeTurns, rotateSplit, rotateTail, swapIfOdd } from "$/utils/label_orientation";
 
@@ -33,6 +33,7 @@ const RollRecordSchema = z.object({
   quarterTurns: z.number().int().min(0).max(3).optional(),
   /** Screen color of this stock. A new roll without a memory starts white. */
   paperColor: z.enum(paperColors).optional(),
+  panels: z.array(LabelPanelSchema).max(32).optional(),
 });
 
 export type RollRecord = z.infer<typeof RollRecordSchema>;
@@ -52,6 +53,7 @@ export type RollShapeFields = {
   labelType?: LabelType;
   quarterTurns: number;
   paperColor?: PaperColor;
+  panels?: LabelPanel[];
 };
 
 export type RollDetection = {
@@ -61,6 +63,33 @@ export type RollDetection = {
 };
 
 const roundMm = (mm: number): number => Math.round(mm * 10) / 10;
+
+/** Rotate normalized label boxes clockwise without changing their physical proportions. */
+const rotatePanels = (panels: LabelPanel[] | undefined, turns: number): LabelPanel[] | undefined => {
+  if (!panels) return undefined;
+  let result = panels.map((panel) => ({ ...panel }));
+  for (let turn = 0; turn < normalizeTurns(turns); turn++) {
+    result = result.map((panel) => {
+      const width = panel.height;
+      const height = panel.width;
+      const left = Math.min(1 - width, Math.max(0, 1 - panel.top - panel.height));
+      const top = Math.min(1 - height, Math.max(0, panel.left));
+      return { ...panel, left, top, width, height };
+    });
+  }
+  return result;
+};
+
+const samePanels = (a: LabelPanel[] | undefined, b: LabelPanel[] | undefined): boolean => {
+  const key = (panels: LabelPanel[] | undefined) =>
+    (panels ?? [])
+      .map((panel) => [
+        ...[panel.left, panel.top, panel.width, panel.height].map((value) => Math.round(value * 1e8) / 1e8),
+        panel.shape ?? "",
+      ])
+      .sort((first, second) => first.join(",").localeCompare(second.join(",")));
+  return JSON.stringify(key(a)) === JSON.stringify(key(b));
+};
 
 const knownLabelType = (value: number | undefined): LabelType | undefined => {
   if (value === undefined || value === LabelType.Invalid) return undefined;
@@ -137,6 +166,7 @@ export const recordFromProps = (props: LabelProps, labelType?: number): RollReco
     labelType,
     quarterTurns: turns,
     ...(props.paperColor ? { paperColor: props.paperColor } : {}),
+    ...(props.panels ? { panels: rotatePanels(props.panels, 4 - turns) } : {}),
   };
 };
 
@@ -155,6 +185,7 @@ export const labelPropsFromRoll = (roll: RollShapeFields): LabelProps => {
     mirror: roll.shape === "circle" ? "none" : roll.mirror,
     quarterTurns: turns,
     ...(roll.paperColor ? { paperColor: roll.paperColor } : {}),
+    ...(roll.panels ? { panels: rotatePanels(roll.panels, turns) } : {}),
   };
 };
 
@@ -168,7 +199,8 @@ export const sameLabelGeometry = (a: LabelProps, b: LabelProps): boolean =>
   (a.tailPos ?? "right") === (b.tailPos ?? "right") &&
   (a.mirror ?? "none") === (b.mirror ?? "none") &&
   (a.splitParts ?? 2) === (b.splitParts ?? 2) &&
-  normalizeTurns(a.quarterTurns) === normalizeTurns(b.quarterTurns);
+  normalizeTurns(a.quarterTurns) === normalizeTurns(b.quarterTurns) &&
+  samePanels(a.panels, b.panels);
 
 const fieldsFromRecord = (record: RollRecord, fallbackDirection: "left" | "top"): RollShapeFields => {
   const tailLengthMm = record.tailLengthMm ?? 0;
@@ -186,6 +218,7 @@ const fieldsFromRecord = (record: RollRecord, fallbackDirection: "left" | "top")
     labelType: knownLabelType(record.labelType),
     quarterTurns: normalizeTurns(record.quarterTurns),
     ...(record.paperColor ? { paperColor: record.paperColor } : {}),
+    ...(record.panels ? { panels: record.panels.map((panel) => ({ ...panel })) } : {}),
   };
 };
 
@@ -227,6 +260,7 @@ export const detectLoadedRoll = (
     labelType: paper?.labelType ?? base?.labelType,
     quarterTurns: base?.quarterTurns ?? 0,
     ...(base?.paperColor ? { paperColor: base.paperColor } : {}),
+    ...(base?.panels ? { panels: base.panels.map((panel) => ({ ...panel })) } : {}),
   };
   return { key, remaining, roll };
 };

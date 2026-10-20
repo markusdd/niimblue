@@ -74,10 +74,11 @@ const presetNumber = (value: number): string => String(Math.round(value * 100) /
  */
 export function presetIdentity(preset: LabelPreset): string {
   const title = preset.title?.trim();
+  const panels = panelIdentity(preset.panels);
   if (title && !DPI_TITLE.test(title)) return `name:${title.toLocaleLowerCase()}`;
   const mm = presetMillimeters(preset);
   const shape = preset.shape ?? "rect";
-  if (preset.canvas) return `design:${presetNumber(mm.width)}x${presetNumber(mm.height)}:${shape}`;
+  if (preset.canvas) return `design:${presetNumber(mm.width)}x${presetNumber(mm.height)}:${shape}:${panels}`;
   return [
     "size",
     presetNumber(mm.width),
@@ -89,7 +90,17 @@ export function presetIdentity(preset: LabelPreset): string {
     preset.splitParts ?? 2,
     preset.tailPos ?? "right",
     preset.mirror ?? "none",
+    panels,
   ].join("|");
+}
+
+/** Stable identity for optional printable regions, independent of object key order. */
+function panelIdentity(panels: LabelPreset["panels"]): string {
+  if (!panels?.length) return "panels:none";
+  return `panels:${panels.map((panel) => [
+    ...[panel.left, panel.top, panel.width, panel.height].map((value) => Math.round(value * 1e8) / 1e8),
+    panel.shape ?? "",
+  ].join(",")).join(";")}`;
 }
 
 /**
@@ -144,6 +155,7 @@ export function labelPropsFromPreset(preset: LabelPreset): LabelProps {
     tailLength: mm.tail > 0 ? mmToPx(mm.tail) : 0,
     mirror: shape === "circle" ? "none" : (preset.mirror ?? "none"),
     quarterTurns: preset.quarterTurns ?? 0,
+    ...(preset.panels ? { panels: preset.panels.map((panel) => ({ ...panel })) } : {}),
     ...(preset.paperColor ? { paperColor: preset.paperColor } : {}),
   };
 }
