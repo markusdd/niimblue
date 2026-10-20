@@ -62,7 +62,7 @@
   // Fabric writes fontFamily onto the object. The revision is what tells the
   // field to read that name again.
   const shownFontFamily = $derived.by(() => {
-    editRevision;
+    void editRevision;
     return selectedText.fontFamily ?? "";
   });
 
@@ -248,7 +248,7 @@
 
 <div class="field">
   <span class="field-label">{$tr("params.text.font_family")}</span>
-  <FontFamilyPicker {editRevision} value={shownFontFamily} valueUpdated={updateFontFamily} />
+  <FontFamilyPicker sampleText={selectedText.text} {editRevision} value={shownFontFamily} valueUpdated={updateFontFamily} />
 </div>
 
 <div class="field">

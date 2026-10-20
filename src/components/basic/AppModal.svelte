@@ -6,20 +6,24 @@
     show: boolean;
     title: string;
     onClose?: () => void;
+    onShown?: () => void;
+    size?: "default" | "lg" | "xl";
     children: Snippet;
     footer?: Snippet;
   }
 
-  let { show = $bindable(), title, onClose, children, footer }: Props = $props();
+  let { show = $bindable(), title, onClose, onShown, size = "default", children, footer }: Props = $props();
+  const titleId = $props.id();
 
   let modalEl: HTMLElement;
   let modal: Modal;
 
   onMount(() => {
     modal = new Modal(modalEl);
+    modalEl.addEventListener("shown.bs.modal", () => onShown?.());
     modal.show();
 
-    modalEl.addEventListener('hide.bs.modal', () => {
+    modalEl.addEventListener("hide.bs.modal", () => {
       if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     });
 
@@ -27,7 +31,6 @@
       if (onClose) onClose();
       show = false;
     });
-
   });
 
   onDestroy(() => {
@@ -44,11 +47,11 @@
   };
 </script>
 
-<div bind:this={modalEl} class="modal fade" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
+<div bind:this={modalEl} class="modal fade" tabindex="-1" aria-hidden="true" aria-labelledby={titleId}>
+  <div class="modal-dialog modal-dialog-centered" class:modal-lg={size === "lg"} class:modal-xl={size === "xl"}>
     <div class="modal-content">
       <div class="modal-header">
-        <h1 class="modal-title fs-5">{title}</h1>
+        <h1 id={titleId} class="modal-title fs-5">{title}</h1>
         <button aria-label="Dismiss" type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
 

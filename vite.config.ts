@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { resolve } from "node:path";
+import { systemFontsPlugin } from "./devtools/system_fonts";
 
 const getDate = (): string => {
   const date = new Date();
@@ -10,7 +11,7 @@ const getDate = (): string => {
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [svelte()],
+  plugins: [svelte(), systemFontsPlugin()],
   define: {
     __APP_VERSION__: JSON.stringify(process.env.COMMIT_TAG),
     __APP_COMMIT__: JSON.stringify(process.env.COMMIT_HASH),

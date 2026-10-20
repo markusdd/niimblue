@@ -40,6 +40,7 @@ jobs:
       - run: node tests/bluetooth_response.test.mjs
       - run: node tests/label_stock.test.mjs
       - run: node tests/label_panels.test.mjs
+      - run: node tests/system_fonts.test.mjs
       - run: npm run sv-check
       - name: Check Windows runtime setup script syntax
         if: runner.os == 'Windows'

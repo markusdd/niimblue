@@ -94,6 +94,18 @@ not the EXE folder. Keep the application identifier `app.niimblue.desktop`
 unchanged across updates to preserve that storage. Replace the EXE while the app
 is closed to update it; create a shortcut manually if desired.
 
+## System fonts
+
+The desktop font picker automatically lists installed fonts through Rust/fontdb,
+independently of the webview's Local Font Access support. Refresh the list after
+installing a font. Imported fonts and the bundled Noto Sans remain available.
+
+For browser development, Vite exposes font family names through a localhost-only
+endpoint. Linux development needs `fc-list` (fontconfig); Windows uses its installed
+font collection and macOS uses AppKit. Restart Vite after updating this code.
+Published browser builds use the browser's permission-based font picker where
+supported; otherwise fonts can be imported or selected by typing their name.
+
 ## Transport behavior
 
 - Scan all adapters; accept the NIIMBOT service UUID or printer-style names.
@@ -113,6 +125,7 @@ automatically; it does not add an extra technical setting to the print flow.
 ```sh
 node tests/native_bluetooth.test.mjs
 node tests/bluetooth_response.test.mjs
+node tests/system_fonts.test.mjs
 npm run sv-check
 cargo test --manifest-path standalone-apps/desktop/src-tauri/Cargo.toml
 ```

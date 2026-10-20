@@ -1,5 +1,6 @@
 mod ble_policy;
 mod bluetooth;
+mod fonts;
 #[cfg(target_os = "windows")]
 mod windows_runtime;
 
@@ -21,6 +22,7 @@ pub fn run() {
             bluetooth::ble_connect,
             bluetooth::ble_write,
             bluetooth::ble_disconnect,
+            fonts::list_system_fonts,
         ])
         .build(tauri::generate_context!())
         .expect("error while building desktop application")

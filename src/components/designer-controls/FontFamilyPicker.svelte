@@ -5,42 +5,60 @@
   import { Toasts } from "$/utils/toasts";
   import MdIcon from "$/components/basic/MdIcon.svelte";
   import { LocalStoragePersistence } from "$/utils/persistence";
-  import { fontCache, userFonts } from "$/stores";
+  import { fontCache } from "$/stores";
+  import FontBrowser from "$/components/designer-controls/FontBrowser.svelte";
   import FontsMenu from "$/components/designer-controls/FontsMenu.svelte";
+
+  import { normalizeFontFamilies } from "$/utils/font_names";
+  import {
+    automaticSystemFonts,
+    canDiscoverSystemFonts,
+    refreshSystemFonts,
+    type SystemFonts,
+  } from "$/utils/system_fonts";
 
   interface Props {
     editRevision?: number;
     value: string;
+    sampleText?: string;
     valueUpdated: (v: string) => void;
   }
 
-  let { value, valueUpdated, editRevision }: Props = $props();
+  let { value, valueUpdated, editRevision, sampleText = "" }: Props = $props();
 
-  let fontQuerySupported = typeof queryLocalFonts !== "undefined";
-  let searchString = $state<string>("");
+  const fontQuerySupported = canDiscoverSystemFonts();
+  let loading = $state(false);
+  let showBrowser = $state(false);
+  let browseButton: HTMLButtonElement;
+  let discoveryFailed = $state(false);
   let box = $state<HTMLInputElement>();
 
-  let systemFontsFiltered = $derived.by<string[]>(() => {
-    return $fontCache.filter((e) => e.toLowerCase().includes(searchString.toLowerCase()));
-  });
-
-  let userFontsFiltered = $derived.by<string[]>(() => {
-    return $userFonts.map((e) => e.family).filter((e) => e.toLowerCase().includes(searchString.toLowerCase()));
-  });
+  const applySystemFonts = (result: SystemFonts | undefined) => {
+    if (!result) return;
+    const families = normalizeFontFamilies([OBJECT_DEFAULTS_TEXT.fontFamily, ...result.families]);
+    fontCache.set(families);
+    try {
+      LocalStoragePersistence.saveCachedFonts(families);
+    } catch (error) {
+      console.warn("Could not cache system fonts", error);
+    }
+  };
 
   const getSystemFonts = async () => {
+    if (loading) return;
+    loading = true;
+    discoveryFailed = false;
     try {
-      const fonts = await queryLocalFonts();
-      const fontListSorted = [OBJECT_DEFAULTS_TEXT.fontFamily, ...new Set(fonts.map((f: FontData) => f.family))].sort();
-      fontCache.update(() => fontListSorted);
-      LocalStoragePersistence.saveCachedFonts(fontListSorted);
-    } catch (e) {
-      Toasts.error(e);
+      applySystemFonts(await refreshSystemFonts());
+    } catch (error) {
+      discoveryFailed = true;
+      Toasts.error(error);
+    } finally {
+      loading = false;
     }
   };
 
   const fontClick = (family: string) => {
-    searchString = "";
     if (box) box.value = family;
     valueUpdated(family);
   };
@@ -62,8 +80,22 @@
         fontCache.update(() => [...uniqueFonts].sort());
       }
     } catch (e) {
-      Toasts.error(e);
+      console.warn("Could not restore cached fonts", e);
     }
+    let mounted = true;
+    loading = true;
+    void automaticSystemFonts()
+      .then(applySystemFonts)
+      .catch((error) => {
+        console.warn("Could not discover system fonts", error);
+        if (mounted) discoveryFailed = true;
+      })
+      .finally(() => {
+        if (mounted) loading = false;
+      });
+    return () => {
+      mounted = false;
+    };
   });
 </script>
 
@@ -81,51 +113,34 @@
     aria-label={$tr("params.text.font_family")}
     oninput={(e) => valueUpdated(e.currentTarget.value)} />
 
-  <!-- svelte-ignore a11y_consider_explicit_label -->
   <button
-    class="btn btn-outline-secondary dropdown-toggle"
+    bind:this={browseButton}
+    class="btn btn-outline-secondary"
     type="button"
-    data-bs-toggle="dropdown"
-    data-bs-popper-config={'{"strategy":"fixed"}'}></button>
-
-  <div class="dropdown-menu">
-    <div class="px-3 py-1">
-      <input
-        type="text"
-        class="form-control form-control-sm"
-        placeholder={$tr("params.text.font_family.search")}
-        bind:value={searchString} />
-    </div>
-
-    {#if userFontsFiltered.length > 0}
-      <h6 class="dropdown-header">{$tr("params.text.user_fonts")}</h6>
-      {#each userFontsFiltered as family (family)}
-        <button class="dropdown-item" style="font-family: {family}" type="button" onclick={() => fontClick(family)}>
-          {family}
-        </button>
-      {/each}
-    {/if}
-
-    {#if systemFontsFiltered.length > 0}
-      <h6 class="dropdown-header">{$tr("params.text.system_fonts")}</h6>
-      {#each systemFontsFiltered as family (family)}
-        <button class="dropdown-item" style="font-family: {family}" type="button" onclick={() => fontClick(family)}>
-          {family}
-        </button>
-      {/each}
-    {/if}
-
-    {#if fontQuerySupported}
-      <div class="dropdown-divider"></div>
-      <button class="dropdown-item load-system-fonts" type="button" onclick={getSystemFonts}>
-        <MdIcon icon="refresh" />
-        {$tr("params.text.fetch_fonts")}
-      </button>
-    {/if}
-  </div>
+    title={$tr("fonts.choose")}
+    aria-label={$tr("fonts.choose")}
+    aria-haspopup="dialog"
+    onclick={() => {
+      showBrowser = true;
+    }}>
+    <MdIcon icon="font_download" />
+  </button>
 
   <FontsMenu />
 </div>
+
+{#if showBrowser}
+  <FontBrowser
+    bind:show={showBrowser}
+    {value}
+    {sampleText}
+    {loading}
+    {discoveryFailed}
+    {fontQuerySupported}
+    refresh={getSystemFonts}
+    choose={fontClick}
+    onClose={() => browseButton?.focus()} />
+{/if}
 
 <style>
   .font-family-picker {
@@ -136,16 +151,5 @@
     width: auto;
     min-width: 0;
     flex: 1 1 auto;
-  }
-
-  .dropdown-menu {
-    width: 280px;
-    max-width: calc(100vw - 1.5rem);
-    max-height: 280px;
-    overflow-y: auto;
-  }
-
-  .load-system-fonts {
-    color: var(--bs-primary);
   }
 </style>
