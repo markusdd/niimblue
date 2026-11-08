@@ -16,7 +16,7 @@ jobs:
             build_args: --bundles appimage
           - os: windows-latest
             build_args: --bundles nsis
-          - os: macos-14
+          - os: macos-15
             build_args: --bundles dmg
     runs-on: ${{ matrix.os }}
     steps:
