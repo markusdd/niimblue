@@ -1,0 +1,28 @@
+/* Bootstrap and editor surfaces share the same cool, light palette. */
+$primary: #2563eb;
+$secondary: #64748b;
+$body-color: #1e293b;
+$body-bg: #ffffff;
+$body-secondary-color: #64748b;
+$border-color: #cbd5e1;
+
+:root {
+  --nb-surface: #ffffff;
+  --nb-surface-subtle: #f8fafc;
+  --nb-workspace: #e9eff6;
+  --nb-hover: #f1f5f9;
+  --nb-text: #1e293b;
+  --nb-text-secondary: #475569;
+  --nb-text-muted: #64748b;
+  --nb-border: #dce3ec;
+  --nb-border-strong: #94a3b8;
+  --nb-accent: #2563eb;
+  --nb-accent-hover: #1d4ed8;
+  --nb-accent-soft: #e8f0ff;
+  --nb-accent-border: #a9c5fa;
+  --nb-accent-text: #1e40af;
+  --nb-success: #15803d;
+  --nb-danger: #b91c1c;
+  --nb-danger-soft: #fef2f2;
+  --nb-paper-shadow: 0 10px 24px rgb(15 23 42 / 12%);
+}

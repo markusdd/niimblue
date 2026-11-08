@@ -23,7 +23,7 @@
   const colorKey = (color: RibbonColor): TranslationKey => `shell.ribbon.${color}` as TranslationKey;
 
   const snap = $derived.by(() => {
-    revision;
+    void revision;
     return ribbonSnapshot($rfidInfo, $heartbeatData);
   });
 
@@ -109,7 +109,7 @@
     margin: 0 0.75rem 0.85rem;
     padding: 0.55rem 0.65rem 0.45rem;
     background: #fff;
-    border: 1px solid #e0d9cc;
+    border: 1px solid var(--nb-border);
     border-radius: 8px;
   }
 
@@ -120,12 +120,12 @@
     gap: 0.35rem 0.5rem;
     font-size: 0.78rem;
     font-weight: 650;
-    color: #3f382f;
+    color: var(--nb-text-secondary);
   }
 
   .muted {
     font-weight: 500;
-    color: #6d655b;
+    color: var(--nb-text-muted);
     text-align: right;
   }
 
@@ -133,13 +133,13 @@
     margin-top: 0.4rem;
     height: 0.45rem;
     border-radius: 99px;
-    background: #e6e1d6;
+    background: var(--nb-workspace);
     overflow: hidden;
   }
 
   .usage-fill {
     height: 100%;
-    background: #6d829c;
+    background: var(--nb-accent);
   }
 
   .swatches {
@@ -160,22 +160,22 @@
     border-radius: 99px;
     padding: 0;
     cursor: pointer;
-    box-shadow: inset 0 0 0 1px rgba(36, 31, 26, 0.18);
+    box-shadow: inset 0 0 0 1px rgb(15 23 42 / 18%);
   }
 
   .swatch.light {
-    box-shadow: inset 0 0 0 1px #b7b1a6;
+    box-shadow: inset 0 0 0 1px var(--nb-border-strong);
   }
 
   .swatch.active {
     box-shadow:
-      0 0 0 2px #f6f3ec,
-      0 0 0 4px #6d829c;
+      0 0 0 2px var(--nb-surface),
+      0 0 0 4px var(--nb-accent);
   }
 
   .hint {
     margin: 0.4rem 0 0.15rem;
-    color: #6d655b;
+    color: var(--nb-text-muted);
     font-size: 0.75rem;
     line-height: 1.3;
   }

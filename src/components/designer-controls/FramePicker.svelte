@@ -81,11 +81,11 @@
     height: 2.75rem;
     padding: 0.1rem;
     border: 1px solid transparent;
-    background: #f6f3ec;
+    background: var(--nb-surface);
     border-radius: 6px;
   }
   .frame:hover {
-    background: #d5dee9;
+    background: var(--nb-accent-soft);
   }
   .frame img {
     width: 100%;
@@ -96,6 +96,6 @@
   .empty {
     margin: 0.35rem 0 0;
     font-size: 0.72rem;
-    color: #5c6b7a;
+    color: var(--nb-text-muted);
   }
 </style>

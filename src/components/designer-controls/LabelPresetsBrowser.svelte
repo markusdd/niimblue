@@ -124,7 +124,7 @@
     gap: 0.25rem;
     padding: 0.35rem;
     background: #fff;
-    border: 1px solid #e0d9cc;
+    border: 1px solid var(--nb-border);
     border-radius: 8px;
   }
 
@@ -152,7 +152,7 @@
     padding: 6px;
     overflow: hidden;
     border-radius: 6px;
-    background: #efeae1;
+    background: var(--nb-hover);
   }
 
   .paper {
@@ -166,7 +166,7 @@
     min-width: 0;
     min-height: 0;
     background: #fff;
-    border: 1px solid rgba(40, 32, 22, 0.28);
+    border: 1px solid rgb(15 23 42 / 28%);
     overflow: hidden;
   }
 
@@ -210,7 +210,7 @@
   .panel {
     position: absolute;
     box-sizing: border-box;
-    border: 1px solid rgba(40, 32, 22, 0.28);
+    border: 1px solid rgb(15 23 42 / 28%);
   }
 
   .meta {
@@ -232,7 +232,7 @@
     white-space: nowrap;
     font-size: 0.72rem;
     line-height: 1.2;
-    color: #241f1a;
+    color: var(--nb-text);
   }
 
   .size {
@@ -240,7 +240,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    color: #6d655b;
+    color: var(--nb-text-muted);
     font-size: 0.68rem;
     line-height: 1.2;
   }
@@ -250,8 +250,8 @@
     min-width: 1.15rem;
     padding: 0 0.28rem;
     border-radius: 99px;
-    background: #d5dee9;
-    color: #1c2836;
+    background: var(--nb-accent-soft);
+    color: var(--nb-text);
     font-size: 0.68rem;
     line-height: 1.35;
     text-align: center;
@@ -261,13 +261,13 @@
     flex: 0 0 auto;
     border: 0;
     background: transparent;
-    color: #6d655b;
+    color: var(--nb-text-muted);
     font-size: 0.72rem;
     line-height: 1;
     padding: 0;
   }
 
   .icon-btn.confirm {
-    color: #8d2b24;
+    color: var(--nb-danger);
   }
 </style>

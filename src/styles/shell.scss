@@ -1,4 +1,4 @@
-/* Full-window label editor. The canvas is the desk; tools have words. */
+/* Full-window label editor, with white tools around a cool grey workspace. */
 
 html,
 body,
@@ -7,8 +7,8 @@ body,
 }
 
 body {
-  background: #e6e1d6;
-  color: #241f1a;
+  background: var(--nb-workspace);
+  color: var(--nb-text);
 }
 
 .app-shell {
@@ -16,7 +16,7 @@ body {
   min-height: 100%;
   display: flex;
   flex-direction: column;
-  background: #e6e1d6;
+  background: var(--nb-workspace);
 }
 
 .app-shell > .alert {
@@ -38,21 +38,22 @@ body {
   align-items: center;
   gap: 0.25rem;
   flex-shrink: 0;
-  background: #f6f3ec;
+  background: var(--nb-surface);
   padding: 0.35rem 0.6rem;
 }
 
 .topbar {
-  border-bottom: 1px solid #d3cdc2;
+  border-bottom: 1px solid var(--nb-border);
   min-height: 3rem;
   flex-wrap: wrap;
   overflow: visible;
 }
 
 .status-bar {
-  border-top: 1px solid #d3cdc2;
+  background: var(--nb-surface-subtle);
+  border-top: 1px solid var(--nb-border);
   min-height: 1.8rem;
-  color: #5e574c;
+  color: var(--nb-text-secondary);
   font-size: 0.8rem;
   gap: 0.9rem;
   flex-wrap: wrap;
@@ -62,7 +63,7 @@ body {
   border: 0;
   padding: 0;
   background: transparent;
-  color: #1c2836;
+  color: var(--nb-text);
   font: inherit;
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -80,11 +81,11 @@ body {
 }
 
 .brand .niim {
-  color: #9c3b32;
+  color: var(--nb-text);
 }
 
 .brand .blue {
-  color: #1d4e89;
+  color: var(--nb-accent);
 }
 
 .topbar-spacer {
@@ -98,7 +99,7 @@ body {
   gap: 0.3rem;
   border: 1px solid transparent;
   background: transparent;
-  color: #241f1a;
+  color: var(--nb-text);
   border-radius: 6px;
   padding: 0.25rem 0.4rem;
   white-space: nowrap;
@@ -106,7 +107,18 @@ body {
 }
 
 .tool-btn:hover:not(:disabled) {
-  background: #ebe4d6;
+  background: var(--nb-hover);
+}
+
+.tool-btn:focus-visible,
+.rail-item:focus-visible,
+.rail-import button:focus-visible,
+.layer-item:focus-visible,
+.inspector-tab:focus-visible,
+.status-roll:focus-visible,
+.debug-link:focus-visible {
+  outline: 2px solid var(--nb-accent);
+  outline-offset: 2px;
 }
 
 .tool-btn:disabled {
@@ -114,26 +126,26 @@ body {
 }
 
 .tool-btn.active {
-  background: #e3efe4;
-  border-color: #b7d2bc;
+  background: var(--nb-accent-soft);
+  border-color: var(--nb-accent-border);
 }
 
 .tool-btn.primary {
-  background: #1f3d34;
-  color: #f6f3ec;
+  background: var(--nb-accent);
+  color: #fff;
 }
 
 .tool-btn.primary:hover:not(:disabled) {
-  background: #173028;
-  color: #f6f3ec;
+  background: var(--nb-accent-hover);
+  color: #fff;
 }
 
 .tool-btn.danger {
-  color: #8d2b24;
+  color: var(--nb-danger);
 }
 
 .tool-btn.danger:hover:not(:disabled) {
-  background: #f6e4e1;
+  background: var(--nb-danger-soft);
 }
 
 .lang-select {
@@ -153,16 +165,16 @@ body {
   min-height: 0;
   min-width: 0;
   overflow: auto;
-  background: #f6f3ec;
+  background: var(--nb-surface);
 }
 
 .insert-rail {
-  border-right: 1px solid #d3cdc2;
+  border-right: 1px solid var(--nb-border);
   padding: 0.6rem 0.5rem 1rem;
 }
 
 .inspector {
-  border-left: 1px solid #d3cdc2;
+  border-left: 1px solid var(--nb-border);
   padding: 0.6rem 0.75rem 1.25rem;
   overflow-x: hidden;
 }
@@ -190,7 +202,7 @@ body {
   margin-bottom: 0.15rem;
   border: 0;
   background: transparent;
-  color: #3f382f;
+  color: var(--nb-text-secondary);
   font-size: 0.78rem;
   font-weight: 650;
   line-height: 1.25;
@@ -212,20 +224,20 @@ body {
 }
 
 .inspector .btn-outline-secondary {
-  --bs-btn-color: #241f1a;
-  --bs-btn-border-color: #8a8175;
-  --bs-btn-hover-color: #241f1a;
-  --bs-btn-hover-bg: #ebe4d6;
-  --bs-btn-hover-border-color: #5c554c;
-  --bs-btn-active-color: #1c2836;
-  --bs-btn-active-bg: #d5dee9;
-  --bs-btn-active-border-color: #6d829c;
+  --bs-btn-color: var(--nb-text);
+  --bs-btn-border-color: var(--nb-border-strong);
+  --bs-btn-hover-color: var(--nb-text);
+  --bs-btn-hover-bg: var(--nb-hover);
+  --bs-btn-hover-border-color: var(--nb-text-secondary);
+  --bs-btn-active-color: var(--nb-text);
+  --bs-btn-active-bg: var(--nb-accent-soft);
+  --bs-btn-active-border-color: var(--nb-accent);
 }
 
 .inspector .btn-check:checked + .btn-outline-secondary {
-  background-color: #d5dee9;
-  border-color: #6d829c;
-  color: #1c2836;
+  background-color: var(--nb-accent-soft);
+  border-color: var(--nb-accent);
+  color: var(--nb-text);
 }
 
 .inspector .print-dir-switch .btn,
@@ -244,7 +256,7 @@ body {
   font-weight: 650;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #6d655b;
+  color: var(--nb-text-muted);
   margin: 0.85rem 0.4rem 0.35rem;
 }
 
@@ -261,17 +273,17 @@ body {
   text-align: left;
   border: 0;
   background: transparent;
-  color: #241f1a;
+  color: var(--nb-text);
   border-radius: 6px;
   padding: 0.38rem 0.5rem;
 }
 
 .rail-item:hover {
-  background: #ebe4d6;
+  background: var(--nb-hover);
 }
 
 .rail-item.active {
-  background: #e3efe4;
+  background: var(--nb-accent-soft);
 }
 
 .rail-import button {
@@ -284,18 +296,18 @@ body {
   background: transparent;
   border-radius: 6px;
   padding: 0.38rem 0.5rem;
-  color: #241f1a;
+  color: var(--nb-text);
 }
 
 .rail-import button:hover {
-  background: #ebe4d6;
+  background: var(--nb-hover);
 }
 
 .icon-browser {
   margin: 0.25rem 0 0.5rem;
   padding: 0.4rem;
   background: #fff;
-  border: 1px solid #e0d9cc;
+  border: 1px solid var(--nb-border);
   border-radius: 8px;
 }
 
@@ -319,7 +331,7 @@ body {
   background: transparent;
   border-radius: 6px;
   padding: 0.28rem 0.45rem;
-  color: #241f1a;
+  color: var(--nb-text);
   font-size: 0.86rem;
 }
 
@@ -330,12 +342,12 @@ body {
 }
 
 .layer-item.active {
-  background: #e7eef6;
+  background: var(--nb-accent-soft);
 }
 
 .layer-empty {
   margin: 0.2rem 0.45rem;
-  color: #6d655b;
+  color: var(--nb-text-muted);
   font-size: 0.85rem;
 }
 
@@ -347,9 +359,7 @@ body {
   align-items: flex-start;
   justify-content: flex-start;
   padding: 1.5rem;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.35), transparent 80px),
-    #d9d3c6;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.35), transparent 80px), var(--nb-workspace);
 }
 
 .canvas-sheet {
@@ -360,7 +370,7 @@ body {
 }
 
 .canvas-sheet .canvas-container {
-  filter: drop-shadow(0 10px 18px rgba(60, 46, 28, 0.18));
+  filter: drop-shadow(var(--nb-paper-shadow));
 }
 
 .canvas-sheet canvas {
@@ -376,17 +386,17 @@ body {
 
 .inspector-tab {
   flex: 1;
-  border: 1px solid #d3cdc2;
+  border: 1px solid var(--nb-border);
   background: transparent;
   border-radius: 6px;
   padding: 0.3rem 0.4rem;
-  color: #5e574c;
+  color: var(--nb-text-secondary);
 }
 
 .inspector-tab.active {
-  background: #fff;
-  color: #241f1a;
-  border-color: #b7d2bc;
+  background: var(--nb-accent-soft);
+  color: var(--nb-accent-text);
+  border-color: var(--nb-accent-border);
 }
 
 .inspector-tools {
@@ -412,7 +422,7 @@ body {
 
 .field-label {
   font-size: 0.75rem;
-  color: #6d655b;
+  color: var(--nb-text-muted);
 }
 
 .choice-row {
@@ -423,18 +433,18 @@ body {
 
 .choice-row .btn.active,
 .choice-row .btn.btn-secondary {
-  background: #d5dee9;
-  border-color: #6d829c;
-  color: #1c2836;
+  background: var(--nb-accent-soft);
+  border-color: var(--nb-accent);
+  color: var(--nb-text);
 }
 
 .muted {
-  color: #6d655b;
+  color: var(--nb-text-muted);
   margin: 0.25rem 0 0;
 }
 
 .status-conn.on {
-  color: #1f3d34;
+  color: var(--nb-success);
 }
 
 .status-grow {
@@ -444,7 +454,7 @@ body {
 .debug-link {
   border: 0;
   background: transparent;
-  color: #6d655b;
+  color: var(--nb-text-muted);
   padding: 0;
 }
 
@@ -456,13 +466,13 @@ body {
 
   .insert-rail {
     border-right: 0;
-    border-bottom: 1px solid #d3cdc2;
+    border-bottom: 1px solid var(--nb-border);
     max-height: 11rem;
   }
 
   .inspector {
     border-left: 0;
-    border-top: 1px solid #d3cdc2;
+    border-top: 1px solid var(--nb-border);
   }
 
   .tool-btn span {

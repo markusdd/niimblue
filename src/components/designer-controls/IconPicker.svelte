@@ -206,17 +206,17 @@
   }
   .tab {
     flex: 1 1 calc(33% - 0.2rem);
-    border: 1px solid #d3cdc2;
+    border: 1px solid var(--nb-border);
     background: #fff;
-    color: #1c2836;
+    color: var(--nb-text);
     border-radius: 6px;
     font-size: 0.75rem;
     line-height: 1.2;
     padding: 0.22rem 0.25rem;
   }
   .tab.active {
-    background: #d5dee9;
-    border-color: #6d829c;
+    background: var(--nb-accent-soft);
+    border-color: var(--nb-accent);
   }
   .icons {
     display: flex;
@@ -234,15 +234,15 @@
     height: 2rem;
     padding: 0.1rem;
     border: 1px solid transparent;
-    background: #f6f3ec;
+    background: var(--nb-surface);
     border-radius: 6px;
-    color: #1c2836;
+    color: var(--nb-text);
   }
   .glyph:hover {
-    background: #d5dee9;
+    background: var(--nb-accent-soft);
   }
   .glyph.danger {
-    background: #f3d6d2;
+    background: var(--nb-danger-soft);
   }
   .glyph img {
     width: 100%;
@@ -254,7 +254,7 @@
   .empty {
     margin: 0.35rem 0 0;
     font-size: 0.72rem;
-    color: #5c6b7a;
+    color: var(--nb-text-muted);
   }
   .mine-actions {
     display: flex;

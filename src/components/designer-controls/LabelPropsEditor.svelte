@@ -797,16 +797,16 @@
     width: 100%;
     margin: 0 0 0.55rem;
     padding: 0.45rem 0.65rem;
-    border: 1px solid #6d829c;
+    border: 1px solid var(--nb-accent);
     border-radius: 8px;
-    background: #e7eef5;
-    color: #1c2836;
+    background: var(--nb-accent-soft);
+    color: var(--nb-text);
     text-align: left;
     cursor: pointer;
   }
 
   .loaded-roll:hover {
-    background: #d5dee9;
+    background: var(--nb-accent-soft);
   }
 
   .loaded-roll-copy {
@@ -821,7 +821,7 @@
   }
 
   .loaded-roll-meta {
-    color: #3f4d5c;
+    color: var(--nb-text-secondary);
     font-size: 0.75rem;
   }
 
@@ -832,7 +832,7 @@
   .color-label {
     display: block;
     margin: 0.35rem 0 0.25rem;
-    color: #6d655b;
+    color: var(--nb-text-muted);
     font-size: 0.75rem;
   }
 
@@ -852,22 +852,22 @@
     border-radius: 99px;
     padding: 0;
     cursor: pointer;
-    box-shadow: inset 0 0 0 1px rgba(36, 31, 26, 0.18);
+    box-shadow: inset 0 0 0 1px rgb(15 23 42 / 18%);
   }
 
   .swatch.light {
-    box-shadow: inset 0 0 0 1px #b7b1a6;
+    box-shadow: inset 0 0 0 1px var(--nb-border-strong);
   }
 
   .swatch.active {
     box-shadow:
-      0 0 0 2px #f6f3ec,
-      0 0 0 4px #6d829c;
+      0 0 0 2px var(--nb-surface),
+      0 0 0 4px var(--nb-accent);
   }
 
   .color-hint {
     margin: 0.4rem 0 0;
-    color: #6d655b;
+    color: var(--nb-text-muted);
     font-size: 0.72rem;
     line-height: 1.3;
   }
@@ -875,12 +875,12 @@
   .svg-icon {
     height: 1.7em;
     width: 1.7em;
-    background-color: #2a2622;
+    background-color: var(--nb-text);
     background-repeat: no-repeat;
     background-position: center;
     background-size: cover;
     border-radius: 3px;
-    box-shadow: 0 0 0 2px #f6f3ec;
+    box-shadow: 0 0 0 2px var(--nb-surface);
   }
 
   .tail-pos-switch .svg-icon {
