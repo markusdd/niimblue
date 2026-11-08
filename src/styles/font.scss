@@ -28,3 +28,198 @@
   font-weight: 400;
   src: url(material-icons/iconfont/material-icons.woff2) format("woff2");
 }
+
+/* Noto Serif, SIL OFL 1.1. Latin and Cyrillic subset; see public/licenses. */
+@font-face {
+  font-family: "NiimBlue Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/niimblue-serif-regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "NiimBlue Serif";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/niimblue-serif-italic.woff2") format("woff2");
+}
+
+/* Bundled design collection. Source notices ship in public/licenses. */
+
+@font-face {
+  font-family: "NiimBlue Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/niimblue-serif-bold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "NiimBlue Serif";
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/niimblue-serif-bolditalic.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "NiimBlue Modern";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/niimblue-modern-regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "NiimBlue Modern";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/niimblue-modern-italic.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "NiimBlue Modern";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/niimblue-modern-bold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "NiimBlue Modern";
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/niimblue-modern-bolditalic.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "NiimBlue Rounded";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/niimblue-rounded-regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "NiimBlue Rounded";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/niimblue-rounded-bold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "NiimBlue Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/niimblue-mono-regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "NiimBlue Mono";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/niimblue-mono-italic.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "NiimBlue Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/niimblue-mono-bold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "NiimBlue Mono";
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/niimblue-mono-bolditalic.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "NiimBlue Condensed";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/niimblue-condensed-regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "NiimBlue Condensed";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/niimblue-condensed-italic.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "NiimBlue Condensed";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/niimblue-condensed-bold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "NiimBlue Condensed";
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/niimblue-condensed-bolditalic.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "NiimBlue Book";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/niimblue-book-regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "NiimBlue Book";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/niimblue-book-italic.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "NiimBlue Book";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/niimblue-book-bold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "NiimBlue Book";
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/niimblue-book-bolditalic.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "NiimBlue Humanist";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/niimblue-humanist-regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "NiimBlue Humanist";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/niimblue-humanist-bold.woff2") format("woff2");
+}

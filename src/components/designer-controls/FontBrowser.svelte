@@ -3,13 +3,17 @@
   import AppModal from "$/components/basic/AppModal.svelte";
   import MdIcon from "$/components/basic/MdIcon.svelte";
   import { fontCache, userFonts } from "$/stores";
-  import { tr } from "$/utils/i18n";
+  import { BUNDLED_FONT_FAMILIES, bundledFont, loadBundledFont } from "$/data/bundled_fonts";
+  import { Toasts } from "$/utils/toasts";
+  import { tr, type TranslationKey } from "$/utils/i18n";
   import { normalizeFontFamilies } from "$/utils/font_names";
 
   interface Props {
     show: boolean;
     value: string;
     sampleText: string;
+    fontStyle: string;
+    fontWeight: string | number;
     loading: boolean;
     discoveryFailed: boolean;
     fontQuerySupported: boolean;
@@ -21,6 +25,8 @@
     show = $bindable(),
     value,
     sampleText,
+    fontStyle,
+    fontWeight,
     loading,
     discoveryFailed,
     fontQuerySupported,
@@ -33,7 +39,8 @@
   let search: HTMLInputElement;
   let list: HTMLDivElement;
   let query = $state("");
-  let source = $state("all");
+  let source = $state(untrack(() => (bundledFont(value) ? "bundled" : "all")));
+  let applying = $state(false);
   let candidate = $state(untrack(() => value));
   let previewText = $state(untrack(() => sampleText.trim() || $tr("fonts.sample")));
   let previewSize = $state(40);
@@ -41,12 +48,32 @@
   let viewportHeight = $state(360);
   const rowHeight = 76;
   const imported = $derived(new Set($userFonts.map((font) => font.family)));
-  const families = $derived(
-    normalizeFontFamilies([
-      ...(source !== "imported" ? $fontCache : []),
-      ...(source !== "system" ? [...imported] : []),
-    ]).filter((family) => family.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())),
-  );
+  const families = $derived.by(() => {
+    const names =
+      source === "bundled"
+        ? BUNDLED_FONT_FAMILIES
+        : source === "imported"
+          ? [...imported]
+          : source === "system"
+            ? $fontCache.filter((family) => !bundledFont(family))
+            : [...BUNDLED_FONT_FAMILIES, ...$fontCache, ...imported];
+    const term = query.trim().toLocaleLowerCase();
+    const matching = normalizeFontFamilies(names).filter((family) => {
+      const font = bundledFont(family);
+      return `${family} ${font?.source ?? ""} ${font ? $tr(`fonts.category.${font.category}` as TranslationKey) : ""}`
+        .toLocaleLowerCase()
+        .includes(term);
+    });
+    const included = BUNDLED_FONT_FAMILIES.filter((family) => matching.includes(family));
+    if (source === "bundled") return included;
+    // Included faces lead the full collection as a useful curated starting point.
+    return source === "all" ? [...included, ...matching.filter((family) => !bundledFont(family))] : matching;
+  });
+  const candidateInfo = $derived(bundledFont(candidate));
+  const category = (family: string) => {
+    const font = bundledFont(family);
+    return font ? $tr(`fonts.category.${font.category}` as TranslationKey) : "";
+  };
   // Keep the full scrollbar while mounting only the visible font previews.
   const start = $derived(
     Math.max(0, Math.min(Math.floor(scrollTop / rowHeight) - 3, Math.max(0, families.length - 1))),
@@ -91,10 +118,18 @@
     search?.focus();
   }
 
-  function apply() {
-    if (!candidate) return;
-    choose(candidate);
-    modal.hide();
+  async function apply() {
+    if (!candidate || applying) return;
+    applying = true;
+    try {
+      await loadBundledFont({ family: candidate, style: fontStyle, weight: fontWeight });
+      choose(candidate);
+      modal.hide();
+    } catch (error) {
+      Toasts.error(error);
+    } finally {
+      applying = false;
+    }
   }
 </script>
 
@@ -108,6 +143,7 @@
       aria-label={$tr("params.text.font_family.search")}
       bind:value={query} />
     <select class="form-select" aria-label={$tr("fonts.source")} bind:value={source}>
+      <option value="bundled">{$tr("fonts.bundled")}</option>
       <option value="all">{$tr("fonts.all")}</option>
       <option value="system">{$tr("params.text.system_fonts")}</option>
       <option value="imported">{$tr("params.text.user_fonts")}</option>
@@ -149,9 +185,13 @@
             list.focus({ preventScroll: true });
           }}
           ondblclick={apply}>
-          <span class="font-name">{family}</span>
-          <span class="font-sample" style:font-family={JSON.stringify(family)}
-            >{previewText || $tr("fonts.sample")}</span>
+          <span class="font-name"
+            >{family}{#if bundledFont(family)}<span class="font-category"> · {category(family)}</span>{/if}</span>
+          <span
+            class="font-sample"
+            style:font-family={JSON.stringify(family)}
+            style:font-style={fontStyle}
+            style:font-weight={fontWeight}>{previewText || $tr("fonts.sample")}</span>
         </button>
       {/each}
       <div aria-hidden="true" style:height={`${(families.length - end) * rowHeight}px`}></div>
@@ -159,6 +199,11 @@
     </div>
     <div class="font-detail">
       <div class="fw-semibold text-break">{candidate}</div>
+      {#if candidateInfo}
+        <div class="small text-body-secondary">{category(candidate)} · {candidateInfo.source}</div>
+        <a class="small" href={`licenses/${candidateInfo.notice}`} target="_blank" rel="noreferrer"
+          >{candidateInfo.license}</a>
+      {/if}
       <label class="small text-body-secondary" for={`${id}-sample`}>{$tr("fonts.preview_text")}</label>
       <textarea id={`${id}-sample`} class="form-control" rows="2" bind:value={previewText}></textarea>
       <div class="d-flex align-items-center gap-2">
@@ -169,6 +214,8 @@
       <div
         class="large-preview border rounded"
         style:font-family={JSON.stringify(candidate)}
+        style:font-style={fontStyle}
+        style:font-weight={fontWeight}
         style:font-size={`${previewSize}px`}>
         {previewText || $tr("fonts.sample")}
       </div>
@@ -189,7 +236,8 @@
         aria-label={$tr("params.text.fetch_fonts")}><MdIcon icon="refresh" /></button>
     {/if}
     <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">{$tr("fonts.cancel")}</button>
-    <button class="btn btn-primary" type="button" disabled={!candidate} onclick={apply}>{$tr("fonts.use")}</button>
+    <button class="btn btn-primary" type="button" disabled={!candidate || applying} onclick={apply}
+      >{$tr("fonts.use")}</button>
   {/snippet}
 </AppModal>
 
@@ -238,11 +286,17 @@
     font: 12px var(--bs-body-font-family);
   }
   .font-name,
+  .font-category {
+    color: var(--bs-secondary-color);
+  }
   .font-sample {
     width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .font-category {
+    color: var(--bs-secondary-color);
   }
   .font-sample {
     font-size: 24px;

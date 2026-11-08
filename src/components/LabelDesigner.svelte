@@ -97,13 +97,16 @@
 
   const loadLabelData = async (data: ExportedLabelTemplate) => {
     undo.paused = true;
-    onUpdateLabelProps(data.label);
-    if (data.csv) {
-      $csvData = data.csv;
-      csvEnabled = true;
+    try {
+      onUpdateLabelProps(data.label);
+      if (data.csv) {
+        $csvData = data.csv;
+        csvEnabled = true;
+      }
+      await FileUtils.loadCanvasState(fabricCanvas!, data.canvas);
+    } finally {
+      undo.paused = false;
     }
-    await FileUtils.loadCanvasState(fabricCanvas!, data.canvas);
-    undo.paused = false;
   };
 
   undo.onLabelUpdate = loadLabelData;
@@ -126,6 +129,7 @@
   };
 
   const onKeyDown = (e: KeyboardEvent) => {
+    if (document.querySelector(".modal.show")) return;
     const key: string = e.key.toLowerCase();
     // windows and linux users are used to ctrl, mac users use cmd
     const cmdOrCtrl = e.metaKey || e.ctrlKey;
@@ -267,8 +271,18 @@
     return FileUtils.makeExportedLabel(fabricCanvas!, labelProps, csvEnabled);
   };
 
-  const onLoadRequested = (label: ExportedLabelTemplate) => {
-    loadLabelData(label).then(() => undo.push(fabricCanvas!, labelProps));
+  const onLoadRequested = async (label: ExportedLabelTemplate) => {
+    await loadLabelData(label);
+    undo.push(fabricCanvas!, labelProps);
+  };
+
+  const onDesignRequested = async (template: ExportedLabelTemplate) => {
+    if (!fabricCanvas) return;
+    // Ink and stock colours describe the real roll, not the decorative design.
+    await onLoadRequested({ ...template, label: { ...template.label,
+      paperColor: labelProps.paperColor ?? "white", inkColor: labelProps.inkColor ?? "black",
+      printDirection: labelProps.printDirection,
+    } });
   };
 
   /** A template card replaces the design. A size card never reaches this. */
@@ -457,6 +471,7 @@
   };
 
   const onPaste = async (event: ClipboardEvent) => {
+    if (document.querySelector(".modal.show")) return;
     if (LabelDesignerUtils.isAnyInputFocused(fabricCanvas!)) {
       return;
     }
@@ -532,6 +547,7 @@
   const renderOnFontsChanged = () => {
     const canvas = fabricCanvas;
     if (!editorLive || !canvas) return;
+    fabric.cache.clearFontCache();
     canvas.forEachObject((o) => {
       if (o instanceof fabric.Textbox) {
         o.initDimensions();
@@ -887,6 +903,7 @@
       <InsertPalette
         {labelProps}
         onInsert={onObjectPicked}
+        onDesign={onDesignRequested}
         onTime={onTimePicked}
         iconOpen={iconPanelOpen}
         onToggleIcons={() => {

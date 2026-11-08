@@ -248,7 +248,7 @@
 
 <div class="field">
   <span class="field-label">{$tr("params.text.font_family")}</span>
-  <FontFamilyPicker sampleText={selectedText.text} {editRevision} value={shownFontFamily} valueUpdated={updateFontFamily} />
+  <FontFamilyPicker fontStyle={selectedText.fontStyle} fontWeight={selectedText.fontWeight} sampleText={selectedText.text} {editRevision} value={shownFontFamily} valueUpdated={updateFontFamily} />
 </div>
 
 <div class="field">

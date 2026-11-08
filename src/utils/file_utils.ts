@@ -1,3 +1,4 @@
+import { loadBundledCanvasFonts } from "$/data/bundled_fonts";
 import * as fabric from "fabric";
 import {
   ExportedLabelTemplateSchema,
@@ -326,6 +327,7 @@ export class FileUtils {
   }
 
   static async loadCanvasState(canvas: fabric.Canvas, state: FabricJson): Promise<void> {
+    await loadBundledCanvasFonts(state);
     const deprecatedLines: fabric.Line[] = [];
 
     await canvas.loadFromJSON(state, (_, obj) => {

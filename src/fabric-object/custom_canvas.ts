@@ -3,7 +3,8 @@ import { panelBoxes } from "$/utils/label_panels";
 import { DEFAULT_LABEL_PROPS, GRID_SIZE } from "$/defaults";
 import type { LabelProps } from "$/types";
 import { isFrameGroup, prepareObjectScale } from "$/fabric-object/scale_mode";
-import { inkPaint, isBlackInk, paperCss } from "$/utils/label_colors";
+import { inkPaint, paperCss } from "$/utils/label_colors";
+import { withPreviewPaint } from "$/fabric-object/preview_paint";
 import { workingEdge } from "$/utils/label_orientation";
 import { mmToPx } from "$/utils/label_units";
 
@@ -22,56 +23,6 @@ type FoldInfo = {
   segments: FoldSegment[];
 };
 type MirrorInfo = { pos: fabric.Point; flip: boolean };
-type InkTouch = { obj: fabric.FabricObject; fill?: string; stroke?: string };
-
-/**
- * Recolor black vector ink for the editor frame only. Fills are put back
- * before the function returns, so the saved objects and the print mask stay black.
- * Gold and white would otherwise disappear in the 1-bit threshold.
- */
-const tintBlackInk = (objects: fabric.FabricObject[], color: string): InkTouch[] => {
-  const touched: InkTouch[] = [];
-
-  const visit = (obj: fabric.FabricObject): boolean => {
-    if (obj instanceof fabric.FabricImage) return false;
-    let changed = false;
-    if (obj instanceof fabric.Group) {
-      for (const child of obj.getObjects()) {
-        if (visit(child)) changed = true;
-      }
-    }
-    const touch: InkTouch = { obj };
-    if (isBlackInk(obj.fill)) {
-      touch.fill = obj.fill;
-      obj.fill = color;
-      changed = true;
-    }
-    if (isBlackInk(obj.stroke)) {
-      touch.stroke = obj.stroke;
-      obj.stroke = color;
-      changed = true;
-    }
-    if (changed) {
-      obj.dirty = true;
-      if (touch.fill !== undefined || touch.stroke !== undefined) touched.push(touch);
-    }
-    return changed;
-  };
-
-  for (const obj of objects) visit(obj);
-  return touched;
-};
-
-const restoreInk = (touched: InkTouch[]) => {
-  for (const touch of touched) {
-    if (touch.fill !== undefined) touch.obj.fill = touch.fill;
-    if (touch.stroke !== undefined) touch.obj.stroke = touch.stroke;
-    touch.obj.dirty = true;
-    const parent = touch.obj.group ?? touch.obj.parent;
-    if (parent) parent.dirty = true;
-  }
-};
-
 export class CustomCanvas extends fabric.Canvas {
   private labelProps: LabelProps = DEFAULT_LABEL_PROPS;
   private readonly SEPARATOR_LINE_WIDTH = 2;
@@ -657,11 +608,8 @@ export class CustomCanvas extends fabric.Canvas {
     ctx: CanvasRenderingContext2D,
     objects: fabric.FabricObject[],
   ) {
-    const paint = this.customBackground ? inkPaint(this.labelProps.inkColor) : undefined;
-    const touched = paint ? tintBlackInk(objects, paint) : [];
-
-    try {
-      // Objects draw past the paper so a smaller label does not hide them.
+    // Objects draw past the paper so a smaller label does not hide them.
+    const drawObjects = () => {
       ctx.save();
       try {
         // Die-cut gutters and tails must stay blank in the actual print bitmap.
@@ -673,14 +621,18 @@ export class CustomCanvas extends fabric.Canvas {
       } finally {
         ctx.restore();
       }
+    };
+    if (this.customBackground) {
+      withPreviewPaint(objects, inkPaint(this.labelProps.inkColor), paperCss(this.labelProps.paperColor), drawObjects);
+    } else drawObjects();
 
-      if (!this.highlightMirror || this.getActiveObjects().length > 1) {
-        return;
-      }
+    if (!this.highlightMirror || this.getActiveObjects().length > 1) {
+      return;
+    }
 
-      ctx.save();
+    ctx.save();
 
-      objects.forEach((obj) => {
+    objects.forEach((obj) => {
       const infos = this.getMirroredObjectCoords(obj);
       infos.forEach((info) => {
         const bbox = obj.getBoundingRect();
@@ -694,10 +646,7 @@ export class CustomCanvas extends fabric.Canvas {
         ctx.restore();
       });
     });
-      ctx.restore();
-    } finally {
-      restoreInk(touched);
-    }
+    ctx.restore();
   }
 
   /**

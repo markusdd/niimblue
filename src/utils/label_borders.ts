@@ -25,6 +25,9 @@ export const BORDER_KINDS = [
   "celestial",
   "circuit",
   "schematic",
+  "botanical-corners",
+  "herbarium",
+  "botanical-wreath",
 ] as const;
 
 export type BorderKind = (typeof BORDER_KINDS)[number];
@@ -55,6 +58,9 @@ export const borderKeywords: Record<BorderKind, string> = {
   celestial: `${frameWords} celestial moon stars sun cosmic himmel mond sterne sonne kosmos artsy`,
   circuit: `${frameWords} circuit pcb traces electronics technical platine leiterbahn elektronik technik`,
   schematic: `${frameWords} schematic resistor capacitor circuit electronics schaltplan widerstand kondensator elektronik`,
+  "botanical-corners": `${frameWords} botanical corners leaves sprig botanisch ecken blätter zweige`,
+  herbarium: `${frameWords} herbarium botanical specimen leaf botanical botanisch herbarium blatt`,
+  "botanical-wreath": `${frameWords} botanical wreath leaves foliage kranz blätter blattkranz ranke`,
 };
 
 const n = (value: number): string => {
@@ -502,6 +508,33 @@ const flowerOutline = (stroke: number): string => {
 const starMark = (stroke: number): string =>
   `<path d="M 0 -0.65 Q 0.08 -0.08 0.5 0 Q 0.08 0.08 0 0.65 Q -0.08 0.08 -0.5 0 Q -0.08 -0.08 0 -0.65 Z" ${strokeAttr(stroke)}/>`;
 
+/** A fine, curved branch with alternating leaves, sampled along the label contour. */
+const contourBranch = (
+  pts: EdgePoint[], center: number, length: number, leaves: number, leafLen: number, stroke: number,
+): string => {
+  if (pts.length < 8) return "";
+  const spacing = spacingOf(pts);
+  const half = Math.max(2, Math.round(length / spacing / 2));
+  const branch = Array.from({ length: half * 2 + 1 }, (_, i) => pts[(center - half + i + pts.length) % pts.length]);
+  const paths = [strokePath(branch, strokeAttr(stroke), false)];
+  const leafStroke = Math.max(0.8, stroke * 0.72);
+  for (let i = 0; i < leaves; i++) {
+    const p = branch[Math.round((i + 0.5) * (branch.length - 1) / leaves)];
+    const side = i % 2 === 0 ? 1 : -1;
+    // Point each blade along the branch and alternately inward/outward.
+    // Its two controls sit on opposite sides of that direction, avoiding
+    // self-crossing leaf outlines when the contour turns around a corner.
+    const dx = p.ny * .65 + p.nx * side * .75;
+    const dy = -p.nx * .65 + p.ny * side * .75;
+    const wx = -dy * leafLen * .24;
+    const wy = dx * leafLen * .24;
+    const tipx = p.x + dx * leafLen;
+    const tipy = p.y + dy * leafLen;
+    paths.push(`<path d="M ${n(p.x)} ${n(p.y)} Q ${n(p.x + dx * leafLen * .5 + wx)} ${n(p.y + dy * leafLen * .5 + wy)} ${n(tipx)} ${n(tipy)} Q ${n(p.x + dx * leafLen * .45 - wx * .8)} ${n(p.y + dy * leafLen * .45 - wy * .8)} ${n(p.x)} ${n(p.y)} Z" ${strokeAttr(leafStroke).replace('fill="none"', 'fill="#fff"')}/>`);
+  }
+  return paths.join("");
+};
+
 /**
  * A frame drawn in the label's own pixel box. Circle stock gets a ring.
  * A transparent rect keeps the group the size of the paper so the stroke
@@ -844,6 +877,46 @@ export const borderSvg = (
           : `<path d="M -1.25 0 H -0.9 L -0.7 -0.35 L -0.35 0.35 L 0 -0.35 L 0.35 0.35 L 0.7 -0.35 L 0.9 0 H 1.25" ${strokeAttr(sw)}/>`;
         parts.push(ornamentAt(seg.at(center), actualSize, body));
       }
+    }
+  } else if (kind === "botanical-corners") {
+    const leafLen = minSide * 0.072;
+    const framePad = pad + leafLen * 1.55;
+    const contourShape = shape === "rect" ? "rounded_rect" : shape;
+    const contourRadius = shape === "rect" ? minSide * 0.12 : Math.max(innerRadius, leafLen);
+    const edge = walkOutline(w, h, framePad, contourRadius, contourShape);
+    const targets: Array<[number, number]> = shape === "circle"
+      ? [[w * 0.76, h * 0.24], [w * 0.24, h * 0.76]]
+      : [[framePad, framePad], [w - framePad, h - framePad]];
+    for (const [x, y] of targets) {
+      const center = nearestIndex(edge, (p) => Math.hypot(p.x - x, p.y - y));
+      parts.push(contourBranch(edge, center, (w + h) * 0.24, 6, leafLen, Math.max(1.1, stroke * 0.58)));
+    }
+  } else if (kind === "herbarium") {
+    const leafLen = minSide * 0.052;
+    const framePad = pad + leafLen * 1.55;
+    const pts = walkOutline(w, h, framePad, Math.max(innerRadius, leafLen), shape);
+    if (pts.length > 8) {
+      // Three quiet contour strokes leave open breaks at the corners and keep
+      // the middle of the label clear for the specimen name and notes.
+      for (const [from, to] of [[0.035, 0.285], [0.37, 0.63], [0.715, 0.965]]) {
+        const segment = pts.slice(Math.floor(pts.length * from), Math.floor(pts.length * to));
+        parts.push(strokePath(segment, strokeAttr(stroke * 0.66), false));
+      }
+      const topCorner = nearestIndex(pts, (p) => Math.hypot(p.x - framePad, p.y - framePad));
+      parts.push(contourBranch(pts, topCorner, Math.min((w + h) * 0.13, minSide * 0.65), 5, leafLen, Math.max(1.05, stroke * 0.54)));
+    }
+  } else if (kind === "botanical-wreath") {
+    const leafLen = minSide * 0.055;
+    const framePad = pad + leafLen * 1.45;
+    const contourShape = shape === "rect" ? "rounded_rect" : shape;
+    const radius = shape === "rect" ? minSide * 0.13 : Math.max(innerRadius, leafLen);
+    const edge = walkOutline(w, h, framePad, radius, contourShape);
+    const targets: Array<[number, number]> = shape === "circle"
+      ? [[w * 0.76, h * 0.24], [w * 0.76, h * 0.76], [w * 0.24, h * 0.76], [w * 0.24, h * 0.24]]
+      : [[framePad, framePad], [w - framePad, framePad], [w - framePad, h - framePad], [framePad, h - framePad]];
+    for (const [x, y] of targets) {
+      const center = nearestIndex(edge, (p) => Math.hypot(p.x - x, p.y - y));
+      parts.push(contourBranch(edge, center, edge.length * spacingOf(edge) * 0.15, 6, leafLen, Math.max(1, stroke * 0.52)));
     }
   }
 

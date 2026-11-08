@@ -1,3 +1,4 @@
+import { BUNDLED_FONT_FAMILIES } from "$/data/bundled_fonts";
 import { get, readable, writable } from "svelte/store";
 import {
   AppConfigSchema,
@@ -28,12 +29,12 @@ import { installNiimbotBluetoothResponse } from "$/utils/bluetooth_response";
 import { installReportedPrinterMetadata } from "$/utils/printer_metadata";
 import { hasNativeBluetooth, NiimbotNativeBluetoothClient } from "$/utils/native_bluetooth";
 import { LocalStoragePersistence, writablePersisted } from "$/utils/persistence";
-import { APP_CONFIG_DEFAULTS, CSV_DEFAULT, OBJECT_DEFAULTS_TEXT } from "$/defaults";
+import { APP_CONFIG_DEFAULTS, CSV_DEFAULT } from "$/defaults";
 import z from "zod";
 import { FileUtils } from "$/utils/file_utils";
 import { createPrinterInfo } from "@mmote/niimbluelib/dist/cjs/client/abstract_client";
 
-export const fontCache = writable<string[]>([OBJECT_DEFAULTS_TEXT.fontFamily]);
+export const fontCache = writable<string[]>([...BUNDLED_FONT_FAMILIES]);
 export const appConfig = writablePersisted<AppConfig>("config", AppConfigSchema, APP_CONFIG_DEFAULTS);
 export const userIcons = writablePersisted<UserIcon[]>("user_icons", z.array(UserIconSchema), []);
 export const userFonts = writablePersisted<UserFont[]>("user_fonts", z.array(UserFontSchema), []);

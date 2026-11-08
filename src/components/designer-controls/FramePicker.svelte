@@ -35,6 +35,9 @@
     celestial: "editor.frames.celestial",
     circuit: "editor.frames.circuit",
     schematic: "editor.frames.schematic",
+    "botanical-corners": "editor.frames.botanical-corners",
+    herbarium: "editor.frames.herbarium",
+    "botanical-wreath": "editor.frames.botanical-wreath",
   };
 
   let search = $state("");

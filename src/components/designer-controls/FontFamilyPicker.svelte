@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { OBJECT_DEFAULTS_TEXT } from "$/defaults";
+  import { BUNDLED_FONT_FAMILIES } from "$/data/bundled_fonts";
   import { tr } from "$/utils/i18n";
   import { Toasts } from "$/utils/toasts";
   import MdIcon from "$/components/basic/MdIcon.svelte";
@@ -21,10 +21,19 @@
     editRevision?: number;
     value: string;
     sampleText?: string;
+    fontStyle?: string;
+    fontWeight?: string | number;
     valueUpdated: (v: string) => void;
   }
 
-  let { value, valueUpdated, editRevision, sampleText = "" }: Props = $props();
+  let {
+    value,
+    valueUpdated,
+    editRevision,
+    sampleText = "",
+    fontStyle = "normal",
+    fontWeight = "normal",
+  }: Props = $props();
 
   const fontQuerySupported = canDiscoverSystemFonts();
   let loading = $state(false);
@@ -35,7 +44,7 @@
 
   const applySystemFonts = (result: SystemFonts | undefined) => {
     if (!result) return;
-    const families = normalizeFontFamilies([OBJECT_DEFAULTS_TEXT.fontFamily, ...result.families]);
+    const families = normalizeFontFamilies([...BUNDLED_FONT_FAMILIES, ...result.families]);
     fontCache.set(families);
     try {
       LocalStoragePersistence.saveCachedFonts(families);
@@ -76,7 +85,7 @@
     try {
       let stored = LocalStoragePersistence.loadCachedFonts();
       if (stored.length > 0) {
-        const uniqueFonts = new Set([OBJECT_DEFAULTS_TEXT.fontFamily, ...stored]);
+        const uniqueFonts = new Set([...BUNDLED_FONT_FAMILIES, ...stored]);
         fontCache.update(() => [...uniqueFonts].sort());
       }
     } catch (e) {
@@ -134,6 +143,8 @@
     bind:show={showBrowser}
     {value}
     {sampleText}
+    {fontStyle}
+    {fontWeight}
     {loading}
     {discoveryFailed}
     {fontQuerySupported}

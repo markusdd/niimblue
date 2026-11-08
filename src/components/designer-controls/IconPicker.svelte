@@ -20,6 +20,7 @@
 
   const iconNames = Object.keys(iconCodepoints) as MaterialIcon[];
   const sources = [
+    { id: "botanical", key: "editor.iconpicker.source.botanical" },
     { id: "clipart", key: "editor.iconpicker.source.clipart" },
     { id: "tabler", key: "editor.iconpicker.source.tabler" },
     { id: "health", key: "editor.iconpicker.source.health" },
@@ -30,25 +31,25 @@
   let search = $state<string>("");
   let source = $state<(typeof sources)[number]["id"]>("clipart");
   let deleteMode = $state<boolean>(false);
-  let extraIcons = $state<Partial<Record<"tabler" | "health", ClipartIcon[]>>>({});
-  let collectionFailed = $state<Partial<Record<"tabler" | "health", boolean>>>({});
-  const collectionLoads: Partial<Record<"tabler" | "health", Promise<ClipartIcon[]>>> = {};
+  let extraIcons = $state<Partial<Record<"tabler" | "health" | "botanical", ClipartIcon[]>>>({});
+  let collectionFailed = $state<Partial<Record<"tabler" | "health" | "botanical", boolean>>>({});
+  const collectionLoads: Partial<Record<"tabler" | "health" | "botanical", Promise<ClipartIcon[]>>> = {};
 
   $effect(() => {
-    if (source !== "tabler" && source !== "health") return;
+    if (source !== "tabler" && source !== "health" && source !== "botanical") return;
     const selected = source;
     if (extraIcons[selected] || collectionFailed[selected]) return;
-    collectionLoads[selected] ??= (selected === "tabler" ? import("$/data/tabler_clipart") : import("$/data/health_clipart"))
-      .then((module) => module.CLIPART);
+    collectionLoads[selected] ??= (selected === "tabler" ? import("$/data/tabler_clipart") : selected === "botanical" ? import("$/data/botanical_ornaments") : import("$/data/health_clipart"))
+      .then((module) => "CLIPART" in module ? module.CLIPART : module.BOTANICAL_ORNAMENTS);
     void collectionLoads[selected]!.then((icons) => { extraIcons[selected] = icons; }).catch((error) => {
       collectionFailed[selected] = true;
       Toasts.error(error);
     });
   });
 
-  const isClipart = $derived(source === "clipart" || source === "tabler" || source === "health");
-  const loading = $derived((source === "tabler" || source === "health") && !extraIcons[source] && !collectionFailed[source]);
-  const activeClipart = $derived(source === "clipart" ? CLIPART : source === "tabler" || source === "health" ? extraIcons[source] ?? [] : []);
+  const isClipart = $derived(source === "botanical" || source === "clipart" || source === "tabler" || source === "health");
+  const loading = $derived((source === "tabler" || source === "health" || source === "botanical") && !extraIcons[source] && !collectionFailed[source]);
+  const activeClipart = $derived(source === "clipart" ? CLIPART : source === "tabler" || source === "health" || source === "botanical" ? extraIcons[source] ?? [] : []);
 
   const svgUrl = (svg: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 
@@ -127,12 +128,14 @@
         {#if loading}<p class="credit" role="status">{$tr("editor.iconpicker.loading")}</p>{/if}
         <div class="icons">
           {#each clipartHits as item (item.id)}
-            <button type="button" class="glyph" data-clipart={item.id} title={item.id} onclick={() => onClipart(item.svg, item.id)}>
+            <button type="button" class="glyph" class:botanical={source === "botanical"} data-clipart={item.id} title={item.id} onclick={() => onClipart(item.svg, item.id)}>
               <img alt="" src={svgUrl(item.svg)} />
             </button>
           {/each}
         </div>
-        {#if source === "clipart"}
+        {#if source === "botanical"}
+          <p class="credit">{$tr("editor.iconpicker.botanical_credit")}</p>
+        {:else if source === "clipart"}
           <p class="credit" title={PHOSPHOR_NOTICE}>{$tr("editor.iconpicker.credit")}</p>
         {:else if source === "tabler"}
           <a class="credit" href="https://github.com/tabler/tabler-icons" target="_blank" rel="noreferrer">Tabler Icons · MIT</a>
@@ -238,6 +241,7 @@
     border-radius: 6px;
     color: var(--nb-text);
   }
+  .glyph.botanical { width: 3.5rem; height: 4.25rem; padding: .3rem; }
   .glyph:hover {
     background: var(--nb-accent-soft);
   }

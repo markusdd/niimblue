@@ -1,9 +1,10 @@
 <script lang="ts">
   import * as fabric from "fabric";
-  import type { LabelProps, OjectType } from "$/types";
+  import type { ExportedLabelTemplate, LabelProps, OjectType } from "$/types";
   import type { MaterialIcon } from "$/styles/mdi_icons";
   import { tr, type TranslationKey } from "$/utils/i18n";
   import MdIcon from "$/components/basic/MdIcon.svelte";
+  import DesignTemplates from "$/components/designer-controls/DesignTemplates.svelte";
   import FramePicker from "$/components/designer-controls/FramePicker.svelte";
   import IconPicker from "$/components/designer-controls/IconPicker.svelte";
   import PdfImportButton from "$/components/designer-controls/PdfImportButton.svelte";
@@ -25,6 +26,7 @@
   interface Props {
     labelProps: LabelProps;
     onInsert: (type: OjectType) => void;
+    onDesign: (template: ExportedLabelTemplate) => Promise<void>;
     onTime: () => void;
     iconOpen: boolean;
     onToggleIcons: () => void;
@@ -44,6 +46,7 @@
   let {
     labelProps,
     onInsert,
+    onDesign,
     onTime,
     iconOpen,
     onToggleIcons,
@@ -155,6 +158,8 @@
     canvas.requestRenderAll();
   };
 </script>
+
+<DesignTemplates {labelProps} hasObjects={layers.length > 0} onApply={onDesign} />
 
 <div class="rail-heading">{$tr("shell.insert")}</div>
 
