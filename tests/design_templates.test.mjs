@@ -31,11 +31,11 @@ const { createDesignTemplate } = await import("../src/utils/design_template_fact
 const { ExportedLabelTemplateSchema } = await import("../src/types.ts");
 
 test("all design collections compose within each stock format in both languages", () => {
-  assert.equal(DESIGN_TEMPLATES.length, 14);
-  assert.equal(new Set(DESIGN_TEMPLATES.map((item) => item.id)).size, 14);
+  assert.equal(DESIGN_TEMPLATES.length, 17);
+  assert.equal(new Set(DESIGN_TEMPLATES.map((item) => item.id)).size, 17);
   assert.equal(DESIGN_TEMPLATES.filter((item) => item.collection === "botanical").length, 6);
   assert.equal(DESIGN_TEMPLATES.filter((item) => item.collection === "vintage").length, 4);
-  assert.equal(DESIGN_TEMPLATES.filter((item) => item.collection === "artdeco").length, 4);
+  assert.equal(DESIGN_TEMPLATES.filter((item) => item.collection === "artdeco").length, 7);
   for (const design of DESIGN_TEMPLATES) for (const format of DESIGN_FORMATS) for (const language of ["en", "de"]) {
     const scene = designScene(design.id, format, language);
     for (const item of scene.elements) {
@@ -149,7 +149,7 @@ test("vintage template frames retain frame metadata and stretch layout behavior"
 test("Art Deco painted geometry stays in bounds in every format", async () => {
   const { ART_DECO_FRAME_KINDS, artDecoFrameSvg } = await import("../src/utils/art_deco_frames.ts");
   const { BORDER_KINDS, borderSvg } = await import("../src/utils/label_borders.ts");
-  assert.equal(ART_DECO_FRAME_KINDS.length, 8);
+  assert.equal(ART_DECO_FRAME_KINDS.length, 16);
   for (const kind of ART_DECO_FRAME_KINDS) for (const [width,height,shape] of [[591,354,"rect"],[472,709,"rect"],[591,354,"rounded_rect"],[472,472,"circle"]]) {
     assert.ok(BORDER_KINDS.includes(kind));
     const svg = artDecoFrameSvg(kind,width,height,shape);
@@ -170,7 +170,8 @@ test("Art Deco templates preserve named frames and bundled typography on reload"
     assert.equal(frame.layerInfo.name, entry.frame);
     assert.equal(frame.layoutScale, "free");
     const objects = await fabric.util.enlivenObjects(JSON.parse(JSON.stringify(template.canvas.objects)));
-    assert.ok(objects.some((object) => object instanceof fabric.Textbox && object.fontFamily === "NiimBlue Mono"));
+    const textObjects = objects.filter((object) => object instanceof fabric.Textbox);
+    assert.equal(textObjects.at(-1).fontFamily, entry.id === "deco-archive" ? "NiimBlue Condensed" : "NiimBlue Mono");
   }
 });
 

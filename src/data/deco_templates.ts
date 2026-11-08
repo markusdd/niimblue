@@ -14,6 +14,9 @@ export const DECO_DESIGNS = [
     en: "A little celebration",
     de: "Ein kleiner Festtag",
   },
+  { id: "deco-nocturne", collection: "artdeco", frame: "deco-orbit", en: "Nocturne boutique", de: "Nocturne Boutique" },
+  { id: "deco-grand", collection: "artdeco", frame: "deco-scalloped", en: "Grand Salon", de: "Großer Salon" },
+  { id: "deco-archive", collection: "artdeco", frame: "deco-hexagon", en: "Archive Studio", de: "Archiv Studio" },
 ] as const;
 
 export type DecoDesignId = (typeof DECO_DESIGNS)[number]["id"];
@@ -38,6 +41,18 @@ const copy: Record<DecoDesignId, Record<DesignLanguage, [string, string, string,
   "deco-celebrate": {
     en: ["A MOMENT TO CELEBRATE", "FÊTE", "A little something for you", "WITH JOY · WITH LOVE"],
     de: ["EIN GRUND ZUM FEIERN", "FESTTAG", "Eine Kleinigkeit für dich", "MIT FREUDE · VON HERZEN"],
+  },
+  "deco-nocturne": {
+    en: ["NOCTURNE / PRIVATE EDITION", "NOCTURNE", "A study in quiet light", "COLLECTION No. 12"],
+    de: ["NOCTURNE / PRIVATAUSGABE", "NOCTURNE", "Eine Studie in stillem Licht", "KOLLEKTION Nr. 12"],
+  },
+  "deco-grand": {
+    en: ["GRAND SALON", "SALON", "A place for fine things", "SERIES / 03"],
+    de: ["GRAND SALON", "SALON", "Ein Ort für schöne Dinge", "SERIE / 03"],
+  },
+  "deco-archive": {
+    en: ["ARCHIVE / STUDY 12", "STUDIO 12", "Objects in sequence", "INDEX No. 012"],
+    de: ["ARCHIV / STUDIE 12", "STUDIO 12", "Objekte in Reihe", "INDEX Nr. 012"],
   },
 };
 
@@ -83,7 +98,15 @@ export function decoDesignScene(id: DecoDesignId, format: DesignFormat, language
   const subtitleY = h * (round ? 0.57 : portrait ? 0.585 : 0.59);
   const dividerY = h * (round ? 0.675 : portrait ? 0.68 : 0.68);
   const footerY = h * 0.72;
-  const titleFamily = id === "deco-reserve" || id === "deco-celebrate" ? "NiimBlue Serif" : "NiimBlue Modern";
+  const cornerArcs = round && id === "deco-nocturne";
+  const captionLeft = cornerArcs ? w * 0.29 : left;
+  const captionWidth = cornerArcs ? w * 0.42 : contentWidth;
+  const titleFamily: BundledFontFamily =
+    id === "deco-grand"
+      ? "NiimBlue Book"
+      : id === "deco-reserve" || id === "deco-celebrate" || id === "deco-nocturne"
+        ? "NiimBlue Serif"
+        : "NiimBlue Modern";
   const elements: DesignElement[] = [
     {
       kind: "svg",
@@ -95,11 +118,11 @@ export function decoDesignScene(id: DecoDesignId, format: DesignFormat, language
       width: w,
       height: h,
     },
-    text(header, left, headerY, contentWidth, unit * 0.09, unit * 0.047, "NiimBlue Condensed", { spacing: 95 }),
+    text(header, captionLeft, headerY, captionWidth, unit * 0.09, unit * 0.047, "NiimBlue Condensed", { spacing: 95 }),
     text(title, left, titleY, contentWidth, unit * 0.19, unit * (portrait ? 0.15 : 0.14), titleFamily, {
-      weight: id === "deco-celebrate" ? 400 : 700,
-      italic: id === "deco-celebrate",
-      spacing: id === "deco-edition" ? 50 : 0,
+      weight: id === "deco-celebrate" || id === "deco-nocturne" ? 400 : 700,
+      italic: id === "deco-celebrate" || id === "deco-nocturne",
+      spacing: id === "deco-edition" || id === "deco-archive" ? 50 : 0,
     }),
     text(subtitle, left, subtitleY, contentWidth, unit * 0.095, unit * 0.052, "NiimBlue Serif", {
       italic: id === "deco-atelier" || id === "deco-celebrate",
@@ -107,12 +130,12 @@ export function decoDesignScene(id: DecoDesignId, format: DesignFormat, language
     divider(w * 0.39, dividerY, w * 0.22),
     text(
       footer,
-      left + contentWidth * 0.04,
+      cornerArcs ? captionLeft : left + contentWidth * 0.04,
       footerY,
-      contentWidth * 0.92,
+      cornerArcs ? captionWidth : contentWidth * 0.92,
       unit * 0.065,
       unit * 0.045,
-      "NiimBlue Mono",
+      id === "deco-archive" ? "NiimBlue Condensed" : "NiimBlue Mono",
       {
         spacing: 25,
       },

@@ -177,6 +177,9 @@
     gap: 1rem;
   }
   .design-grid {
+    max-height: min(52vh, 36rem);
+    overflow-y: auto;
+    padding: 0.15rem;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.75rem;

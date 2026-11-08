@@ -1,3 +1,4 @@
+import { ARCHITECTURAL_DECO_FRAMES, architecturalDecoSvg, type ArchitecturalDecoFrame } from "./art_deco_architecture";
 import type { LabelShape } from "$/types";
 
 /** Original geometric frame geometry; all strokes use the label's design pixels. */
@@ -10,6 +11,7 @@ export const ART_DECO_FRAME_KINDS = [
   "deco-linked",
   "deco-spire",
   "deco-arcade",
+  ...ARCHITECTURAL_DECO_FRAMES,
 ] as const;
 export type ArtDecoFrameKind = (typeof ART_DECO_FRAME_KINDS)[number];
 const n = (v: number) => String(Math.round(v * 1000) / 1000);
@@ -149,6 +151,8 @@ export function artDecoFrameSvg(
   height: number,
   shape: LabelShape = "rect",
 ): string {
+  if ((ARCHITECTURAL_DECO_FRAMES as readonly string[]).includes(kind))
+    return architecturalDecoSvg(kind as ArchitecturalDecoFrame, width, height, shape);
   const w = Math.max(32, width),
     h = Math.max(32, height),
     u = Math.min(w, h);

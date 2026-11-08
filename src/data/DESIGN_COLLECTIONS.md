@@ -64,3 +64,19 @@ compositions. All fourteen designs across the three collections now undergo
 Fabric serialization/reload tests in all three formats; new frame paths are
 also checked for painted bounds on rectangular, rounded and circular paper.
 Physical print review is still needed for fine strokes and the smallest captions.
+
+### Curved and architectural additions
+
+The Art Deco collection now contains sixteen frames. Eight further variants
+in `art_deco_architecture.ts` add quarter-circle sunrays, interlocking arc
+corners, a scalloped crest, quarter-circle portals, a hexagonal pavilion,
+stepped crowns, bowtie canopies and fluted sidewalls. Motif sizes follow the
+shorter paper side, and circle stock gets perimeter adaptations. The centre
+remains available for text; white terminal masks use the real paper colour in
+the editor and remain unprinted in the printer bitmap.
+
+Nocturne boutique, Grand Salon and Archive Studio bring Art Deco to seven
+editable compositions (seventeen designs overall). Round Nocturne captions
+have narrower text boxes so they stay clear of the inner quadrant arcs. The
+menu keeps its controls visible while the larger grid scrolls. All existing
+English/German and three-format serialization tests cover the additions.

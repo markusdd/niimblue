@@ -14,6 +14,14 @@
   let { onFrame, labelShape = "rect" }: Props = $props();
 
   const frameKey: Record<BorderKind, TranslationKey> = {
+    "deco-quadrant": "editor.frames.deco-quadrant",
+    "deco-orbit": "editor.frames.deco-orbit",
+    "deco-scalloped": "editor.frames.deco-scalloped",
+    "deco-portal": "editor.frames.deco-portal",
+    "deco-hexagon": "editor.frames.deco-hexagon",
+    "deco-ziggurat": "editor.frames.deco-ziggurat",
+    "deco-bowtie": "editor.frames.deco-bowtie",
+    "deco-fluted": "editor.frames.deco-fluted",
     "deco-mitre": "editor.frames.deco-mitre",
     "deco-terminals": "editor.frames.deco-terminals",
     "deco-diamonds": "editor.frames.deco-diamonds",

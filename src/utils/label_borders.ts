@@ -39,6 +39,14 @@ export type BorderKind = (typeof BORDER_KINDS)[number];
 const frameWords = "frame border rahmen rand";
 
 export const borderKeywords: Record<BorderKind, string> = {
+  "deco-quadrant": `${frameWords} art deco quadrant corner sunrays sonnenstrahl-ecken curved architectural geometric bogen geometrisch`,
+  "deco-orbit": `${frameWords} art deco orbit interlocking arcs verbundene bögen curved architectural geometric bogen geometrisch`,
+  "deco-scalloped": `${frameWords} art deco scalloped scalloped crest bogenkrone curved architectural geometric bogen geometrisch`,
+  "deco-portal": `${frameWords} art deco portal quarter-circle portal viertelkreis-portal curved architectural geometric bogen geometrisch`,
+  "deco-hexagon": `${frameWords} art deco hexagon hexagonal pavilion sechseck-pavillon curved architectural geometric bogen geometrisch`,
+  "deco-ziggurat": `${frameWords} art deco ziggurat stepped crown stufenkrone curved architectural geometric bogen geometrisch`,
+  "deco-bowtie": `${frameWords} art deco bowtie bowtie canopy schleifenbaldachin curved architectural geometric bogen geometrisch`,
+  "deco-fluted": `${frameWords} art deco fluted fluted sides geriffelte seiten curved architectural geometric bogen geometrisch`,
   "deco-mitre": `${frameWords} art deco mitre miter overlapping geometry gehrung überlappung geometrisch`,
   "deco-terminals": `${frameWords} art deco corner brackets terminals dots ecken endpunkte punkte`,
   "deco-diamonds": `${frameWords} art deco diamonds jewels rauten diamant`,
