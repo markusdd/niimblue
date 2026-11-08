@@ -12,6 +12,12 @@
   let { onFrame, labelShape = "rect" }: Props = $props();
 
   const frameKey: Record<BorderKind, TranslationKey> = {
+    cartouche: "editor.frames.cartouche",
+    baroque: "editor.frames.baroque",
+    cameo: "editor.frames.cameo",
+    rococo: "editor.frames.rococo",
+    "ribbon-plaque": "editor.frames.ribbon-plaque",
+    "scroll-plaque": "editor.frames.scroll-plaque",
     line: "editor.frames.line",
     double: "editor.frames.double",
     corners: "editor.frames.corners",

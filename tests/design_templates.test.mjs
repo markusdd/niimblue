@@ -30,9 +30,11 @@ const { designPreviewSvg } = await import("../src/utils/design_template_preview.
 const { createDesignTemplate } = await import("../src/utils/design_template_factory.ts");
 const { ExportedLabelTemplateSchema } = await import("../src/types.ts");
 
-test("six original designs compose within each stock format in both languages", () => {
-  assert.equal(DESIGN_TEMPLATES.length, 6);
-  assert.equal(new Set(DESIGN_TEMPLATES.map((item) => item.id)).size, 6);
+test("botanical and vintage designs compose within each stock format in both languages", () => {
+  assert.equal(DESIGN_TEMPLATES.length, 10);
+  assert.equal(new Set(DESIGN_TEMPLATES.map((item) => item.id)).size, 10);
+  assert.equal(DESIGN_TEMPLATES.filter((item) => item.collection === "botanical").length, 6);
+  assert.equal(DESIGN_TEMPLATES.filter((item) => item.collection === "vintage").length, 4);
   for (const design of DESIGN_TEMPLATES) for (const format of DESIGN_FORMATS) for (const language of ["en", "de"]) {
     const scene = designScene(design.id, format, language);
     for (const item of scene.elements) {
@@ -106,6 +108,40 @@ test("new botanical frames keep painted paths inside all three label shapes", as
         assert.ok(box.left + box.width <= width && box.top + box.height <= height, `${kind}/${shape}`);
       }
     }
+  }
+});
+
+test("vintage frames stay inside paper and preserve blank centres across aspect ratios", async () => {
+  const { VINTAGE_FRAME_KINDS, vintageFrameSvg } = await import("../src/utils/vintage_frames.ts");
+  const { borderSvg, BORDER_KINDS } = await import("../src/utils/label_borders.ts");
+  assert.equal(VINTAGE_FRAME_KINDS.length, 6);
+  for (const kind of VINTAGE_FRAME_KINDS) {
+    assert.ok(BORDER_KINDS.includes(kind));
+    for (const [width, height, shape] of [[591,354,"rect"], [472,709,"rect"], [591,354,"rounded_rect"], [472,472,"circle"]]) {
+      const source = vintageFrameSvg(kind, width, height, shape);
+      assert.equal(borderSvg(kind, width, height, shape), source);
+      const parsed = await fabric.loadSVGFromString(source);
+      const painted = parsed.objects.filter((item) => item && item.opacity > 0);
+      assert.ok(painted.length >= 2);
+      for (const item of painted) {
+        const box = item.getBoundingRect();
+        assert.ok(box.left >= 0 && box.top >= 0, `${kind}/${shape} ${JSON.stringify(box)}`);
+        assert.ok(box.left + box.width <= width && box.top + box.height <= height, `${kind}/${shape}`);
+      }
+      const svgDoc = new dom.window.DOMParser().parseFromString(source, "image/svg+xml");
+      assert.equal(svgDoc.querySelector("parsererror"), null);
+      assert.equal(svgDoc.querySelector("image, text, use"), null);
+    }
+  }
+});
+
+test("vintage template frames retain frame metadata and stretch layout behavior", async () => {
+  for (const entry of DESIGN_TEMPLATES.filter((item) => item.collection === "vintage")) {
+    const template = await createDesignTemplate(entry.id, DESIGN_FORMATS[0], "en");
+    const frame = template.canvas.objects.find((item) => item.layerInfo?.kind === "frame");
+    assert.equal(frame.layerInfo.name, entry.frame);
+    assert.equal(frame.layoutScale, "free");
+    assert.ok(template.canvas.objects.filter((item) => item.type.toLowerCase() === "textbox").length >= 4);
   }
 });
 

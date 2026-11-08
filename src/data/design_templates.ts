@@ -1,17 +1,31 @@
+import { VINTAGE_DESIGNS, isVintageDesign, vintageDesignScene } from "./vintage_templates";
 import type { BundledFontFamily } from "./bundled_fonts";
 import type { LabelProps, LabelShape } from "../types";
 import { pxToMm } from "../utils/label_units";
 import { BOTANICAL_ORNAMENTS } from "./botanical_ornaments";
 
 /** Original editable designs. Future technical/modern collections use this catalogue too. */
-export const DESIGN_TEMPLATES = [
-  { id: "pantry", ornament: "olive-sprig", en: "Botanical pantry", de: "Botanische Vorratskammer" },
-  { id: "lavender", ornament: "lavender-stem", en: "Lavender", de: "Lavendel" },
-  { id: "citrus", ornament: "citrus-branch", en: "Citrus garden", de: "Zitrusgarten" },
-  { id: "apothecary", ornament: "artisan-leaf", en: "Vintage apothecary", de: "Alte Apotheke" },
-  { id: "floral", ornament: "wildflower-spray", en: "Floral gift", de: "Blumengruß" },
-  { id: "artisan", ornament: "artisan-leaf", en: "Minimal artisan", de: "Handgemacht" },
+const BOTANICAL_DESIGNS = [
+  {
+    id: "pantry",
+    collection: "botanical",
+    ornament: "olive-sprig",
+    en: "Botanical pantry",
+    de: "Botanische Vorratskammer",
+  },
+  { id: "lavender", collection: "botanical", ornament: "lavender-stem", en: "Lavender", de: "Lavendel" },
+  { id: "citrus", collection: "botanical", ornament: "citrus-branch", en: "Citrus garden", de: "Zitrusgarten" },
+  {
+    id: "apothecary",
+    collection: "botanical",
+    ornament: "artisan-leaf",
+    en: "Vintage apothecary",
+    de: "Alte Apotheke",
+  },
+  { id: "floral", collection: "botanical", ornament: "wildflower-spray", en: "Floral gift", de: "Blumengruß" },
+  { id: "artisan", collection: "botanical", ornament: "artisan-leaf", en: "Minimal artisan", de: "Handgemacht" },
 ] as const;
+export const DESIGN_TEMPLATES = [...BOTANICAL_DESIGNS, ...VINTAGE_DESIGNS] as const;
 export type DesignId = (typeof DESIGN_TEMPLATES)[number]["id"];
 export type DesignLanguage = "en" | "de";
 export interface DesignFormat {
@@ -45,6 +59,7 @@ export type DesignElement =
       kind: "svg";
       svg: string;
       name: string;
+      role?: "frame" | "illustration";
       x: number;
       y: number;
       width: number;
@@ -149,8 +164,9 @@ const COPY = {
 
 /** Explicit compositions for each aspect; illustration proportions never stretch. */
 export function designScene(id: DesignId, format: DesignFormat, language: DesignLanguage = "en"): DesignScene {
+  if (isVintageDesign(id)) return vintageDesignScene(id, format, language);
   const { width: w, height: h, shape } = format;
-  const info = DESIGN_TEMPLATES.find((item) => item.id === id)!;
+  const info = BOTANICAL_DESIGNS.find((item) => item.id === id)!;
   const [eyebrow, title, subtitle, footer] = COPY[id][language];
   const elements: DesignElement[] = [];
   const round = shape === "circle";

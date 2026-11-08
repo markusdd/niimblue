@@ -1,3 +1,4 @@
+import { VINTAGE_FRAME_KINDS, vintageFrameSvg, type VintageFrameKind } from "./vintage_frames";
 import type { LabelShape } from "$/types";
 
 /** Original frame geometry. These are not taken from the Niimbot app. */
@@ -28,6 +29,7 @@ export const BORDER_KINDS = [
   "botanical-corners",
   "herbarium",
   "botanical-wreath",
+  ...VINTAGE_FRAME_KINDS,
 ] as const;
 
 export type BorderKind = (typeof BORDER_KINDS)[number];
@@ -35,6 +37,12 @@ export type BorderKind = (typeof BORDER_KINDS)[number];
 const frameWords = "frame border rahmen rand";
 
 export const borderKeywords: Record<BorderKind, string> = {
+  cartouche: `${frameWords} cartouche vintage antique ornate label kartusche antik geschwungen doppellinie`,
+  baroque: `${frameWords} baroque crest vintage antique barock wappen ornamental`,
+  cameo: `${frameWords} cameo oval lobed vintage camee medaillon bogen`,
+  rococo: `${frameWords} rococo scroll vintage ornate rokoko schnörkel schnoerkel`,
+  "ribbon-plaque": `${frameWords} ribbon plaque ticket vintage bowed etikett schild bogen seitentab`,
+  "scroll-plaque": `${frameWords} scroll plaque vintage curls notches schnörkel schild kerben`,
   line: `${frameWords} line linie outline kontur`,
   double: `${frameWords} double doppelt doppellinie twin`,
   corners: `${frameWords} corners ecken corner bracket`,
@@ -546,6 +554,9 @@ export const borderSvg = (
   height: number,
   shape: LabelShape = "rect",
 ): string => {
+  if ((VINTAGE_FRAME_KINDS as readonly string[]).includes(kind)) {
+    return vintageFrameSvg(kind as VintageFrameKind, width, height, shape);
+  }
   const w = Math.max(16, width);
   const h = Math.max(16, height);
   const minSide = Math.min(w, h);

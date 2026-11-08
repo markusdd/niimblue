@@ -28,6 +28,12 @@
   let { show = $bindable(), onClose, labelProps, hasObjects, onApply }: Props = $props();
   let modal = $state<AppModal>();
   let selection = $state<DesignId>("pantry");
+  let collection = $state<"botanical" | "vintage">("botanical");
+  const designs = $derived(DESIGN_TEMPLATES.filter((item) => item.collection === collection));
+  const selectCollection = (next: "botanical" | "vintage") => {
+    collection = next;
+    selection = DESIGN_TEMPLATES.find((item) => item.collection === next)!.id;
+  };
   let formatId = $state("landscape");
   let ready = $state(false);
   let applying = $state(false);
@@ -38,7 +44,7 @@
   const selected = $derived(DESIGN_TEMPLATES.find((item) => item.id === selection)!);
   const previews = $derived(
     ready
-      ? DESIGN_TEMPLATES.map((item) => ({ ...item, preview: designPreviewSvg(designScene(item.id, format, language)) }))
+      ? designs.map((item) => ({ ...item, preview: designPreviewSvg(designScene(item.id, format, language)) }))
       : [],
   );
   const dimension = (item: DesignFormat) =>
@@ -49,7 +55,7 @@
     formatId = current ? "current" : "landscape";
   });
   $effect(() => {
-    const scenes = DESIGN_TEMPLATES.map((item) => designScene(item.id, format, language));
+    const scenes = designs.map((item) => designScene(item.id, format, language));
     let active = true;
     ready = false;
     void Promise.all(scenes.map(loadDesignSceneFonts))
@@ -81,6 +87,22 @@
 {#if show}
   <AppModal bind:show bind:this={modal} title={$tr("designs.title")} size="lg" {onClose}>
     <p class="small text-body-secondary mb-3">{$tr("designs.intro")}</p>
+    <div class="collection-tabs mb-3" role="group" aria-label={$tr("designs.collections")}>
+      <button
+        type="button"
+        class="btn btn-sm"
+        class:active={collection === "botanical"}
+        aria-pressed={collection === "botanical"}
+        disabled={applying}
+        onclick={() => selectCollection("botanical")}>{$tr("designs.botanical")}</button>
+      <button
+        type="button"
+        class="btn btn-sm"
+        class:active={collection === "vintage"}
+        aria-pressed={collection === "vintage"}
+        disabled={applying}
+        onclick={() => selectCollection("vintage")}>{$tr("designs.vintage")}</button>
+    </div>
     <div class="design-controls">
       <label class="small">
         {$tr("designs.format")}
@@ -99,7 +121,10 @@
       </label>
     </div>
     {#if !ready}<p role="status" class="small text-body-secondary mt-3">{$tr("designs.loading")}</p>{/if}
-    <div class="design-grid" role="group" aria-label={$tr("designs.collection")}>
+    <div
+      class="design-grid"
+      role="group"
+      aria-label={$tr(collection === "botanical" ? "designs.botanical" : "designs.vintage")}>
       {#each previews as item (item.id)}
         <button
           class="design-card"
@@ -132,6 +157,22 @@
 {/if}
 
 <style>
+  .collection-tabs {
+    display: flex;
+    gap: 0.35rem;
+    padding: 0.3rem;
+    background: var(--nb-hover);
+    border-radius: 8px;
+  }
+  .collection-tabs .btn {
+    flex: 1;
+    color: var(--nb-text-secondary);
+  }
+  .collection-tabs .btn.active {
+    background: var(--nb-surface);
+    color: var(--nb-accent-text);
+    box-shadow: 0 1px 3px rgb(15 23 42 / 10%);
+  }
   .design-controls {
     display: grid;
     grid-template-columns: 1fr 1fr;

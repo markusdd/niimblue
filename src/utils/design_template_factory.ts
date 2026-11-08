@@ -76,8 +76,8 @@ export async function createDesignTemplate(
         perPixelTargetFind: true,
         snapAngle: 10,
       });
-      nameLayer(group, { kind: "clipart", name: element.name });
-      markLayoutScale(group, "lock");
+      nameLayer(group, { kind: element.role ?? "clipart", name: element.name });
+      markLayoutScale(group, element.role === "frame" ? "free" : "lock");
       objects.push(group);
     }
   }

@@ -33,3 +33,15 @@ Checks: `node tests/design_templates.test.mjs` validates scene bounds, SVG parsi
 text escaping, and real Fabric object serialization/reloading in all 18 combinations.
 Canvas glyph measurement is mocked in that test; it does not substitute for
 checking the actual bundled fonts and print output.
+
+## Vintage collection
+
+Four editable designs (spice cabinet, atelier scent, homemade preserves, and
+keepsake) use the original vintage cartouche frames. The six standalone frames
+are available in the frame picker as cartouche, baroque, cameo, rococo, bowed
+plaque, and scroll plaque. `vintage_frames.ts` owns their SVG geometry;
+`vintage_templates.ts` owns example copy and type-led compositions, using the
+bundled Book, Serif and Condensed faces. The same scene still drives previews
+and editable objects. Botanical and Vintage are separate collections in the
+menu. Frame geometry is evaluated for the actual width/height and stock shape;
+round stock gets a circular medallion treatment rather than a stretched rectangle.
