@@ -20,7 +20,10 @@ export function designPreviewSvg(scene: DesignScene): string {
       if (element.kind === "text") {
         const lines = element.text.split("\n");
         const size = designTextSize(element);
-        return `<text x="${element.x + element.width / 2}" y="${element.y + size}" text-anchor="middle" font-family="${escape(designFontFamily(element))}" font-size="${size}" font-weight="${element.weight ?? 400}" font-style="${element.italic ? "italic" : "normal"}" letter-spacing="${((element.spacing ?? 0) / 1000) * size}" fill="black">${lines.map((line, index) => `<tspan x="${element.x + element.width / 2}" dy="${index ? size * 1.16 : 0}">${escape(line)}</tspan>`).join("")}</text>`;
+        const x =
+          element.x + (element.align === "left" ? 0 : element.align === "right" ? element.width : element.width / 2);
+        const anchor = element.align === "left" ? "start" : element.align === "right" ? "end" : "middle";
+        return `<text x="${x}" y="${element.y + size}" text-anchor="${anchor}" font-family="${escape(designFontFamily(element))}" font-size="${size}" font-weight="${element.weight ?? 400}" font-style="${element.italic ? "italic" : "normal"}" letter-spacing="${((element.spacing ?? 0) / 1000) * size}" fill="black">${lines.map((line, index) => `<tspan x="${x}" dy="${index ? size * 1.16 : 0}">${escape(line)}</tspan>`).join("")}</text>`;
       }
       const view = element.svg
         .match(/viewBox="([^"]+)"/)?.[1]

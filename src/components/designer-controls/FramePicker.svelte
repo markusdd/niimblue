@@ -2,6 +2,7 @@
   import { tr, type TranslationKey } from "$/utils/i18n";
   import { iconMatches } from "$/utils/icon_search";
   import { BORDER_KINDS, borderKeywords, borderSvg, type BorderKind } from "$/utils/label_borders";
+  import { CYBER_FRAME_KINDS } from "$/utils/cyber_frames";
   import { ART_DECO_FRAME_KINDS } from "$/utils/art_deco_frames";
   import { VINTAGE_FRAME_KINDS } from "$/utils/vintage_frames";
   import type { LabelShape } from "$/types";
@@ -14,6 +15,18 @@
   let { onFrame, labelShape = "rect" }: Props = $props();
 
   const frameKey: Record<BorderKind, TranslationKey> = {
+    "cyber-hud": "editor.frames.cyber-hud",
+    "cyber-ruler": "editor.frames.cyber-ruler",
+    "cyber-chevron": "editor.frames.cyber-chevron",
+    "cyber-armour": "editor.frames.cyber-armour",
+    "cyber-telemetry": "editor.frames.cyber-telemetry",
+    "cyber-module": "editor.frames.cyber-module",
+    "cyber-docking": "editor.frames.cyber-docking",
+    "cyber-signal": "editor.frames.cyber-signal",
+    "cyber-reactor": "editor.frames.cyber-reactor",
+    "cyber-vector": "editor.frames.cyber-vector",
+    "cyber-terminal": "editor.frames.cyber-terminal",
+    "cyber-aperture": "editor.frames.cyber-aperture",
     "deco-quadrant": "editor.frames.deco-quadrant",
     "deco-orbit": "editor.frames.deco-orbit",
     "deco-scalloped": "editor.frames.deco-scalloped",
@@ -79,13 +92,15 @@
   const deco: readonly string[] = [...ART_DECO_FRAME_KINDS, "deco"];
   const inCollection = (kind: BorderKind) =>
     collection === "all" ||
-    (collection === "artdeco"
-      ? deco.includes(kind)
-      : collection === "botanical"
-        ? botanical.includes(kind)
-        : collection === "vintage"
-          ? vintage.includes(kind)
-          : kind === "circuit" || kind === "schematic");
+    (collection === "cyber"
+      ? (CYBER_FRAME_KINDS as readonly string[]).includes(kind)
+      : collection === "artdeco"
+        ? deco.includes(kind)
+        : collection === "botanical"
+          ? botanical.includes(kind)
+          : collection === "vintage"
+            ? vintage.includes(kind)
+            : kind === "circuit" || kind === "schematic" || (CYBER_FRAME_KINDS as readonly string[]).includes(kind));
 
   const svgUrl = (svg: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 
@@ -103,6 +118,7 @@
 <div class="frame-picker">
   <select class="form-select form-select-sm mb-1" bind:value={collection} aria-label={$tr("editor.frames.collection")}>
     <option value="all">{$tr("editor.frames.all")}</option>
+    <option value="cyber">{$tr("designs.cyber")}</option>
     <option value="artdeco">{$tr("designs.artdeco")}</option>
     <option value="vintage">{$tr("designs.vintage")}</option>
     <option value="botanical">{$tr("designs.botanical")}</option>

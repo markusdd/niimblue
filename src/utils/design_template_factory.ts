@@ -34,7 +34,7 @@ export async function createDesignTemplate(
         fontStyle: element.italic ? "italic" : "normal",
         fontWeight: element.weight ?? 400,
         charSpacing: element.spacing ?? 0,
-        textAlign: "center",
+        textAlign: element.align ?? "center",
         fill: "black",
         lineHeight: 1.1,
         originX: "left",

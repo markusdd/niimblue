@@ -14,20 +14,25 @@ export type BotanicalOrnament = {
 const ornament = (id: string, name: string, drawing: string): BotanicalOrnament => ({
   id,
   name,
-  keywords: {
-    "olive-sprig": "olive olives olive branch twig botanical olive zweig olivenzweig pflanze blatt",
-    "lavender-stem": "lavender lavender stem botanical lavendel stiel blume pflanze",
-    "citrus-branch": "citrus lemon orange fruit branch zitrus zitrone orange frucht zweig",
-    "wildflower-spray": "wildflower meadow flowers floral spray wildblume wiese blumen blüten blumenstrauß",
-    "floral-corner": "floral corner flowers ornament blumenecke blumen ecke ornament",
-    "artisan-leaf": "leaf branch botanical artisan leaves blatt zweig botanisch blätter",
-  }[id] ?? "botanical plant pflanze floral blume",
+  keywords:
+    {
+      "olive-sprig": "olive olives olive branch twig botanical olive zweig olivenzweig pflanze blatt",
+      "lavender-stem": "lavender lavender stem botanical lavendel stiel blume pflanze",
+      "rosemary-sprig": "rosemary rosmarin herb needle leaves sprig kräuter nadeln zweig",
+      "citrus-branch": "citrus lemon orange fruit branch zitrus zitrone orange frucht zweig",
+      "wildflower-spray": "wildflower meadow flowers floral spray wildblume wiese blumen blüten blumenstrauß",
+      "floral-corner": "floral corner flowers ornament blumenecke blumen ecke ornament",
+      "artisan-leaf": "leaf branch botanical artisan leaves blatt zweig botanisch blätter",
+    }[id] ?? "botanical plant pflanze floral blume",
   viewBox: "0 0 124 160",
   svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 124 160" fill="none" stroke="#000" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round">${drawing}</svg>`,
 });
 
 export const BOTANICAL_ORNAMENTS: BotanicalOrnament[] = [
-  ornament("olive-sprig", "Olive sprig", `
+  ornament(
+    "olive-sprig",
+    "Olive sprig",
+    `
     <path d="M59 148C58 126 63 111 60 93C57 74 48 56 34 39"/>
     <path d="M60 105C70 91 82 83 96 78M58 91C48 80 38 73 26 68M60 121C72 111 82 106 94 104M57 77C67 66 76 60 86 57M51 65C43 53 35 47 26 43"/>
     <path d="M93 78C83 74 76 77 72 86C81 88 89 85 93 78ZM27 68C35 63 42 65 47 73C39 77 31 75 27 68ZM92 104C84 99 77 101 72 109C79 113 88 111 92 104ZM85 57C77 52 70 54 66 62C73 66 81 64 85 57ZM27 43C35 40 41 43 44 51C37 54 30 51 27 43Z" fill="#fff"/>
@@ -35,33 +40,42 @@ export const BOTANICAL_ORNAMENTS: BotanicalOrnament[] = [
     <ellipse cx="48" cy="57" rx="2.2" ry="3.2" transform="rotate(-35 48 57)" fill="#fff"/>
     <ellipse cx="67" cy="70" rx="2.2" ry="3.2" transform="rotate(33 67 70)" fill="#fff"/>
     <ellipse cx="67" cy="96" rx="2.2" ry="3.2" transform="rotate(28 67 96)" fill="#fff"/>
-  `),
+  `,
+  ),
 
-  ornament("lavender-stem", "Lavender stem", `
+  ornament(
+    "lavender-stem",
+    "Lavender stem",
+    `
     <path d="M58 149C62 121 57 95 61 68C63 52 67 37 72 22"/>
     <path d="M59 125C50 117 43 110 38 101M60 112C68 105 74 98 78 89M60 96C51 89 46 82 43 74M62 81C69 75 74 68 77 61"/>
     <path d="M72 24C66 20 66 15 71 11C76 14 77 19 72 24ZM68 32C61 30 59 25 63 20C69 22 71 27 68 32ZM74 39C68 35 69 30 74 27C79 31 79 36 74 39ZM66 47C60 43 61 38 66 35C72 38 72 43 66 47ZM72 54C66 51 67 45 72 43C77 46 77 51 72 54ZM63 61C58 57 59 52 64 49C69 53 68 58 63 61ZM70 68C64 66 64 60 69 58C75 61 75 65 70 68Z" fill="#fff"/>
     <path d="M70 22L72 16M65 29L65 24M73 37L74 32M64 44L65 39M71 52L72 47M62 58L63 54M69 66L70 62"/>
     <path d="M39 102C43 105 47 110 50 115M77 90C73 95 68 100 63 104M44 75C48 79 52 84 55 88M76 62C73 67 69 71 64 75"/>
     <path d="M50 115C42 114 37 109 38 101C46 103 50 108 50 115ZM63 104C64 96 70 91 78 89C78 97 72 102 63 104ZM55 88C47 87 43 82 43 74C51 76 55 81 55 88ZM64 75C65 68 70 63 77 61C77 68 72 73 64 75Z" fill="#fff"/>
-  `),
+  `,
+  ),
 
-  ornament("citrus-branch", "Citrus branch", `
-    <path d="M18 134C38 116 49 98 61 79C73 59 83 42 103 26"/>
-    <path d="M46 101C37 93 27 88 17 86M59 81C53 68 49 56 48 44M72 61C83 61 92 58 101 52M35 116C31 106 25 99 17 94"/>
-    <path d="M18 86C26 79 36 81 42 89C36 97 26 97 18 86ZM48 45C39 40 37 30 43 22C52 27 54 36 48 45ZM101 52C98 42 104 34 114 33C116 43 111 50 101 52ZM18 94C27 91 35 97 37 107C27 110 20 105 18 94Z" fill="#fff"/>
-    <path d="M21 86C28 86 34 87 40 90M47 42C45 36 44 31 44 26M103 50C107 45 110 41 113 36M21 96C27 98 32 102 35 106"/>
-    <path d="M80 104C80 95 86 89 95 88C97 97 91 104 82 106C73 104 68 97 70 88C78 89 83 95 82 104Z" fill="#fff"/>
-    <path d="M81 91C82 96 82 100 82 104M80 104C76 100 74 96 72 92M83 101C86 97 90 94 94 92"/>
-    <path d="M65 119C65 112 69 107 76 106C78 113 74 119 67 121C60 119 57 114 58 107C64 107 68 112 67 119Z" fill="#fff"/>
-    <path d="M66 109L67 119M65 117L60 110M68 116L74 109"/>
-    <path d="M102 26C102 19 107 14 114 14C115 21 111 26 104 28C97 26 94 21 95 14C101 14 105 19 104 26Z" fill="#fff"/>
-    <path d="M45 99C45 103 46 105 47 108"/>
-    <path d="M47 107C54 110 58 117 56 123C54 130 46 132 40 127C34 122 37 114 42 109C44 107 45 106 47 107Z" fill="#fff"/>
-    <path d="M44 113C41 117 40 121 42 124M50 111C54 115 55 120 53 124"/>
-  `),
+  ornament(
+    "rosemary-sprig",
+    "Rosemary sprig",
+    `
+    <g stroke-width="1.3"><path d="M52 148C62 115 57 62 70 17"/><path d="M58.073 111.094C45 96 32 74 27 51"/><path d="M59.682 89.753C79 80 94 59 100 40"/><path d="M59.78 88.38C58.24 83.91 52.52 78.46 49.63 76.36C52.14 81.45 56.90 86.69 59.78 88.38Z" fill="#fff"/><path d="M59.89 86.72C64.32 85.06 69.61 79.19 71.63 76.25C66.61 78.90 61.50 83.80 59.89 86.72Z" fill="#fff"/><path d="M60.59 77.26C58.70 72.32 52.33 66.00 49.16 63.52C52.11 69.20 57.45 75.22 60.59 77.26Z" fill="#fff"/><path d="M60.72 75.58C65.61 73.56 71.77 67.02 74.16 63.79C68.56 66.89 62.68 72.39 60.72 75.58Z" fill="#fff"/><path d="M61.55 65.99C60.22 61.61 54.80 56.23 52.04 54.17C54.31 59.16 58.78 64.32 61.55 65.99Z" fill="#fff"/><path d="M61.71 64.29C66.06 62.85 71.30 57.30 73.30 54.49C68.36 56.88 63.31 61.48 61.71 64.29Z" fill="#fff"/><path d="M62.76 54.65C61.79 50.56 56.95 45.62 54.44 43.74C56.26 48.39 60.21 53.14 62.76 54.65Z" fill="#fff"/><path d="M62.97 52.95C67.03 51.88 71.85 46.93 73.68 44.38C69.07 46.31 64.41 50.37 62.97 52.95Z" fill="#fff"/><path d="M64.31 43.32C62.99 38.50 57.44 32.14 54.61 29.61C56.89 35.20 61.47 41.22 64.31 43.32Z" fill="#fff"/><path d="M64.58 41.63C69.38 40.20 75.62 34.51 78.08 31.63C72.54 34.03 66.62 38.74 64.58 41.63Z" fill="#fff"/><path d="M66.32 32.10C65.12 27.07 59.69 20.18 56.89 17.41C59.04 23.29 63.50 29.76 66.32 32.10Z" fill="#fff"/><path d="M66.67 30.43C71.68 29.13 78.45 23.56 81.16 20.71C75.33 22.98 68.95 27.57 66.67 30.43Z" fill="#fff"/><path d="M68.52 22.44C68.02 18.14 63.74 12.40 61.45 10.12C62.74 15.11 66.15 20.53 68.52 22.44Z" fill="#fff"/><path d="M68.95 20.80C73.24 20.22 78.89 15.83 81.13 13.49C76.17 14.88 70.82 18.38 68.95 20.80Z" fill="#fff"/><path d="M47.28 96.92C43.78 94.59 36.78 93.90 33.61 94.02C38.14 96.26 44.34 97.33 47.28 96.92Z" fill="#fff"/><path d="M46.84 96.25C49.09 92.69 49.62 85.68 49.42 82.51C47.29 87.09 46.36 93.32 46.84 96.25Z" fill="#fff"/><path d="M42.23 88.86C38.36 86.17 30.49 84.80 26.91 84.61C31.94 87.30 38.89 88.98 42.23 88.86Z" fill="#fff"/><path d="M41.81 88.14C44.41 84.21 45.60 76.32 45.71 72.74C43.14 77.82 41.61 84.81 41.81 88.14Z" fill="#fff"/><path d="M37.57 80.28C34.52 77.56 27.89 76.08 24.84 75.84C28.88 78.57 34.69 80.34 37.57 80.28Z" fill="#fff"/><path d="M37.19 79.52C39.84 76.41 41.17 69.75 41.35 66.69C38.71 70.80 37.06 76.64 37.19 79.52Z" fill="#fff"/><path d="M33.45 71.27C30.92 68.49 25.02 66.80 22.24 66.46C25.67 69.28 30.81 71.24 33.45 71.27Z" fill="#fff"/><path d="M33.12 70.48C35.84 67.90 37.41 61.96 37.69 59.18C34.94 62.67 33.10 67.84 33.12 70.48Z" fill="#fff"/><path d="M29.98 61.94C27.01 58.62 20.04 55.83 16.77 54.99C20.81 58.52 26.87 61.44 29.98 61.94Z" fill="#fff"/><path d="M29.72 61.13C32.98 58.08 35.62 51.06 36.39 47.77C32.94 51.89 30.15 58.00 29.72 61.13Z" fill="#fff"/><path d="M27.47 53.07C24.64 49.42 17.67 45.92 14.37 44.75C18.29 48.71 24.31 52.26 27.47 53.07Z" fill="#fff"/><path d="M27.28 52.24C30.86 49.33 34.22 42.30 35.33 38.97C31.45 42.97 28.02 49.06 27.28 52.24Z" fill="#fff"/><path d="M75.78 78.30C77.51 74.46 77.05 67.44 76.41 64.33C74.94 69.16 74.89 75.46 75.78 78.30Z" fill="#fff"/><path d="M76.36 77.74C80.26 79.33 87.26 78.60 90.34 77.84C85.46 76.56 79.16 76.75 76.36 77.74Z" fill="#fff"/><path d="M82.28 71.48C83.54 66.94 82.26 59.06 81.26 55.62C80.37 61.25 81.06 68.37 82.28 71.48Z" fill="#fff"/><path d="M82.80 70.86C87.38 71.96 95.21 70.38 98.61 69.25C92.95 68.58 85.86 69.53 82.80 70.86Z" fill="#fff"/><path d="M88.02 64.02C88.94 60.04 87.07 53.51 85.81 50.71C85.36 55.57 86.58 61.52 88.02 64.02Z" fill="#fff"/><path d="M88.48 63.36C92.49 64.12 98.94 62.01 101.69 60.66C96.82 60.38 90.92 61.82 88.48 63.36Z" fill="#fff"/><path d="M92.95 56.14C93.57 52.44 91.24 46.75 89.79 44.36C89.69 48.81 91.34 54.05 92.95 56.14Z" fill="#fff"/><path d="M93.33 55.45C97.05 55.94 102.65 53.40 104.98 51.87C100.54 51.93 95.36 53.77 93.33 55.45Z" fill="#fff"/><path d="M96.96 48.06C96.95 43.60 93.59 36.89 91.70 34.09C92.38 39.42 94.96 45.62 96.96 48.06Z" fill="#fff"/><path d="M97.26 47.37C101.72 47.19 108.31 43.58 111.03 41.60C105.73 42.47 99.63 45.28 97.26 47.37Z" fill="#fff"/><path d="M99.63 41.14C99.14 36.55 95.07 29.90 92.88 27.17C94.12 32.60 97.37 38.79 99.63 41.14Z" fill="#fff"/><path d="M99.85 40.46C104.42 39.80 110.91 35.47 113.56 33.19C108.18 34.63 102.12 38.11 99.85 40.46Z" fill="#fff"/></g>
+  `,
+  ),
 
-  ornament("wildflower-spray", "Wildflower spray", `
+  ornament(
+    "citrus-branch",
+    "Citrus branch",
+    `
+    <path d="M38 148Q42 143 46 138C50 131 54 128 57 120C60 113 62 106 64 98C66 91 66 85 65 78C64 70 66 61 68 54C70 48 72 43 73 39C76 34 78 29 78 24"/><path d="M57 120Q49.5 119 42 116"/><path d="M42 116C40.49 106.01 26.45 98.21 15 101C19.99 111.09 34.07 117.55 42 116Z" fill="#fff"/><path d="M42 116Q27.15 107.75 18.51 102.95" stroke-width="1"/><path d="M65 78Q72.5 74 80 71"/><path d="M80 71C88.69 75.50 101.69 68.74 105 58C94.55 56.22 82.60 63.79 80 71Z" fill="#fff"/><path d="M80 71Q93.75 63.85 101.75 59.69" stroke-width="1"/><path d="M68 54Q62.0 47 56 44"/><path d="M56 44C57.66 34.34 47.26 23.94 36 24C37.47 34.53 48.32 43.68 56 44Z" fill="#fff"/><path d="M56 44Q45.00 33.00 38.60 26.60" stroke-width="1"/><path d="M73 39Q79.0 38 85 35"/><path d="M85 35C93.51 37.94 105.99 30.14 109 20C98.83 19.75 87.39 28.14 85 35Z" fill="#fff"/><path d="M85 35Q98.20 26.75 105.88 21.95" stroke-width="1"/><path d="M78 24C82.30 18.93 79.70 9.57 73 6C70.26 12.58 73.56 21.36 78 24Z" fill="#fff"/><path d="M78 24Q75.25 14.10 73.65 8.34" stroke-width="1"/><path d="M46 138Q52.0 138 58 135"/><path d="M58 135C65.38 135.90 73.18 127.58 73 119C65.00 120.52 58.15 129.13 58 135Z" fill="#fff"/><path d="M58 135Q66.25 126.20 71.05 121.08" stroke-width="1"/><path d="M64 98C72 96 78 98 83 105M65 78C57 67 48 59 38 58"/><path d="M83 105C88 108 98 107 103 117C108 128 103 136 100 138L98 142L94 139C83 139 77 130 77 120C77 114 80 110 81 108Z" fill="#fff"/><path d="M38 58C39 64 46 65 45 74C44 82 35 88 28 87L24 90L23 86C17 82 19 72 24 66C28 62 33 61 35 59Z" fill="#fff"/><path d="M79 105Q81 102 83 105Q86 103 88 106L83 109ZM34 58Q36 55 38 58Q41 55 42 58L38 62Z" fill="#fff" stroke-width="1.2"/><path d="M82 117C80 125 85 132 90 134M24 76C25 70 29 67 32 66" stroke-width="1"/>
+  `,
+  ),
+
+  ornament(
+    "wildflower-spray",
+    "Wildflower spray",
+    `
     <path d="M58 148C58 128 55 112 48 96C41 80 33 69 24 59M58 137C68 119 75 102 81 84C85 72 88 58 88 44M55 119C43 111 31 105 17 102M68 116C80 109 94 105 106 104M48 96C55 89 61 81 65 73"/>
     <path d="M17 102C13 97 14 91 19 89C23 94 22 99 17 102ZM106 104C104 98 107 93 112 92C115 97 112 102 106 104ZM65 73C61 68 62 62 67 60C71 65 70 70 65 73Z" fill="#fff"/>
     <path d="M25 57L22 48M87 42L89 33M18 100L18 93M105 102L111 96M65 71L66 64"/>
@@ -76,9 +90,13 @@ export const BOTANICAL_ORNAMENTS: BotanicalOrnament[] = [
     <circle cx="22.5" cy="45" r="1.45" fill="#000" stroke="none"/>
     <path d="M89 27C86 23 86 19 89 17C93 19 94 23 91 27C95 24 99 24 101 27C99 31 95 32 91 29C94 33 94 37 91 39C87 37 86 33 89 29C85 32 81 32 79 29C81 25 85 24 89 27Z" fill="#fff"/>
     <circle cx="90" cy="28" r="1.45" fill="#000" stroke="none"/>
-  `),
+  `,
+  ),
 
-  ornament("floral-corner", "Paired floral corner", `
+  ornament(
+    "floral-corner",
+    "Paired floral corner",
+    `
     <path d="M14 146C15 116 25 93 45 74C60 60 78 49 105 42M15 146C43 145 66 138 83 122C99 107 108 88 112 59"/>
     <path d="M33 91C24 83 23 73 30 65C40 71 42 81 33 91ZM51 70C46 59 50 50 60 46C66 56 63 65 51 70ZM78 54C78 43 85 36 96 37C97 48 90 54 78 54ZM83 122C72 117 68 108 73 98C84 101 88 111 83 122ZM103 94C92 91 87 82 91 72C102 74 107 84 103 94ZM109 68C100 62 98 52 104 43C114 49 116 59 109 68Z" fill="#fff"/>
     <path d="M34 87C32 79 31 73 31 68M53 67C54 60 57 54 60 49M80 51C85 45 90 41 94 39M80 119C77 111 76 105 75 101M100 91C97 84 95 79 94 75M108 65C106 57 105 51 105 46"/>
@@ -87,9 +105,13 @@ export const BOTANICAL_ORNAMENTS: BotanicalOrnament[] = [
     <path d="M64 70C63 76 62 81 61 85M62 86C57 82 53 79 50 77M64 84C66 79 67 75 67 70"/>
     <path d="M104 115C103 108 107 103 114 103C117 110 113 115 106 117C100 116 97 111 99 105C105 106 108 111 106 117Z" fill="#fff"/>
     <path d="M101 108L106 115M105 113L113 106"/>
-  `),
+  `,
+  ),
 
-  ornament("artisan-leaf", "Artisan leaf branch", `
+  ornament(
+    "artisan-leaf",
+    "Artisan leaf branch",
+    `
     <path d="M18 132C38 122 50 108 58 90C67 69 75 47 101 28M39 116C32 104 27 93 26 79M55 96C45 85 39 73 38 59M67 70C79 69 91 65 101 57M78 52C70 42 66 31 68 20"/>
     <path d="M26 79C18 73 17 63 23 56C32 62 34 71 26 79ZM38 59C30 52 30 42 37 35C46 42 46 51 38 59ZM101 57C100 47 106 40 116 40C118 50 112 57 102 59ZM68 24C60 18 61 10 68 5C76 10 77 18 68 24Z" fill="#fff"/>
     <path d="M26 76C25 69 24 64 24 59M38 56C37 48 37 43 38 39M103 56C108 51 111 47 114 43M68 21C67 16 67 12 68 8"/>
@@ -99,5 +121,6 @@ export const BOTANICAL_ORNAMENTS: BotanicalOrnament[] = [
     <path d="M77 111C79 103 86 99 94 102C93 111 87 116 78 114C72 109 72 102 77 97C84 101 85 108 78 114Z" fill="#fff"/>
     <path d="M77 101C78 105 78 110 78 113M80 110C84 106 88 104 92 103"/>
     <path d="M51 105C46 109 41 112 36 114M60 88C56 83 52 78 49 72M72 61C78 58 85 56 92 54"/>
-  `),
+  `,
+  ),
 ];

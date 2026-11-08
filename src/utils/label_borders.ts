@@ -1,3 +1,4 @@
+import { CYBER_FRAME_KINDS, cyberFrameSvg, type CyberFrameKind } from "./cyber_frames";
 import { ART_DECO_FRAME_KINDS, artDecoFrameSvg, type ArtDecoFrameKind } from "./art_deco_frames";
 import { VINTAGE_FRAME_KINDS, vintageFrameSvg, type VintageFrameKind } from "./vintage_frames";
 import type { LabelShape } from "$/types";
@@ -32,6 +33,7 @@ export const BORDER_KINDS = [
   "botanical-wreath",
   ...VINTAGE_FRAME_KINDS,
   ...ART_DECO_FRAME_KINDS,
+  ...CYBER_FRAME_KINDS,
 ] as const;
 
 export type BorderKind = (typeof BORDER_KINDS)[number];
@@ -39,6 +41,18 @@ export type BorderKind = (typeof BORDER_KINDS)[number];
 const frameWords = "frame border rahmen rand";
 
 export const borderKeywords: Record<BorderKind, string> = {
+  "cyber-hud": `${frameWords} cyber scifi science fiction technical technologie hud panel hud-panel`,
+  "cyber-ruler": `${frameWords} cyber scifi science fiction technical technologie instrument ticks instrumentenskala`,
+  "cyber-chevron": `${frameWords} cyber scifi science fiction technical technologie directional chevrons richtungspfeile`,
+  "cyber-armour": `${frameWords} cyber scifi science fiction technical technologie armour tabs panzerplatten`,
+  "cyber-telemetry": `${frameWords} cyber scifi science fiction technical technologie telemetry rails telemetrieschienen`,
+  "cyber-module": `${frameWords} cyber scifi science fiction technical technologie module housing modulgehäuse`,
+  "cyber-docking": `${frameWords} cyber scifi science fiction technical technologie docking brackets andockstation klammern`,
+  "cyber-signal": `${frameWords} cyber scifi science fiction technical technologie signal rails waveform signalwellen`,
+  "cyber-reactor": `${frameWords} cyber scifi science fiction technical technologie reactor panel reaktor`,
+  "cyber-vector": `${frameWords} cyber scifi science fiction technical technologie vector angular diagonal vektor`,
+  "cyber-terminal": `${frameWords} cyber scifi science fiction technical technologie terminal header konsole`,
+  "cyber-aperture": `${frameWords} cyber scifi science fiction technical technologie aperture brackets blende`,
   "deco-quadrant": `${frameWords} art deco quadrant corner sunrays sonnenstrahl-ecken curved architectural geometric bogen geometrisch`,
   "deco-orbit": `${frameWords} art deco orbit interlocking arcs verbundene bögen curved architectural geometric bogen geometrisch`,
   "deco-scalloped": `${frameWords} art deco scalloped scalloped crest bogenkrone curved architectural geometric bogen geometrisch`,
@@ -572,6 +586,7 @@ export const borderSvg = (
   height: number,
   shape: LabelShape = "rect",
 ): string => {
+  if ((CYBER_FRAME_KINDS as readonly string[]).includes(kind)) return cyberFrameSvg(kind as CyberFrameKind, width, height, shape);
   if ((ART_DECO_FRAME_KINDS as readonly string[]).includes(kind)) {
     return artDecoFrameSvg(kind as ArtDecoFrameKind, width, height, shape);
   }

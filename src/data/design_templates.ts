@@ -1,3 +1,4 @@
+import { CYBER_DESIGNS, isCyberDesign, cyberDesignScene } from "./cyber_templates";
 import { DECO_DESIGNS, isDecoDesign, decoDesignScene } from "./deco_templates";
 import { VINTAGE_DESIGNS, isVintageDesign, vintageDesignScene } from "./vintage_templates";
 import type { BundledFontFamily } from "./bundled_fonts";
@@ -19,14 +20,14 @@ const BOTANICAL_DESIGNS = [
   {
     id: "apothecary",
     collection: "botanical",
-    ornament: "artisan-leaf",
+    ornament: "rosemary-sprig",
     en: "Vintage apothecary",
     de: "Alte Apotheke",
   },
   { id: "floral", collection: "botanical", ornament: "wildflower-spray", en: "Floral gift", de: "Blumengruß" },
-  { id: "artisan", collection: "botanical", ornament: "artisan-leaf", en: "Minimal artisan", de: "Handgemacht" },
+  { id: "artisan", collection: "botanical", ornament: "rosemary-sprig", en: "Minimal artisan", de: "Handgemacht" },
 ] as const;
-export const DESIGN_TEMPLATES = [...BOTANICAL_DESIGNS, ...VINTAGE_DESIGNS, ...DECO_DESIGNS] as const;
+export const DESIGN_TEMPLATES = [...BOTANICAL_DESIGNS, ...VINTAGE_DESIGNS, ...DECO_DESIGNS, ...CYBER_DESIGNS] as const;
 export type DesignId = (typeof DESIGN_TEMPLATES)[number]["id"];
 export type DesignLanguage = "en" | "de";
 export interface DesignFormat {
@@ -52,6 +53,7 @@ export type DesignElement =
       size: number;
       serif?: boolean;
       family?: BundledFontFamily;
+      align?: "left" | "center" | "right";
       weight?: number;
       italic?: boolean;
       spacing?: number;
@@ -165,6 +167,7 @@ const COPY = {
 
 /** Explicit compositions for each aspect; illustration proportions never stretch. */
 export function designScene(id: DesignId, format: DesignFormat, language: DesignLanguage = "en"): DesignScene {
+  if (isCyberDesign(id)) return cyberDesignScene(id, format, language);
   if (isDecoDesign(id)) return decoDesignScene(id, format, language);
   if (isVintageDesign(id)) return vintageDesignScene(id, format, language);
   const { width: w, height: h, shape } = format;

@@ -33,6 +33,7 @@
     { id: "botanical", key: "designs.botanical" },
     { id: "vintage", key: "designs.vintage" },
     { id: "artdeco", key: "designs.artdeco" },
+    { id: "cyber", key: "designs.cyber" },
   ] as const;
   let collection = $state<Collection>("botanical");
   const designs = $derived(DESIGN_TEMPLATES.filter((item) => item.collection === collection));
@@ -233,6 +234,12 @@
     }
     .design-preview {
       height: 120px;
+    }
+    .collection-tabs {
+      flex-wrap: wrap;
+    }
+    .collection-tabs .btn {
+      flex: 1 1 calc(50% - 0.35rem);
     }
     .design-controls {
       gap: 0.5rem;

@@ -31,11 +31,12 @@ const { createDesignTemplate } = await import("../src/utils/design_template_fact
 const { ExportedLabelTemplateSchema } = await import("../src/types.ts");
 
 test("all design collections compose within each stock format in both languages", () => {
-  assert.equal(DESIGN_TEMPLATES.length, 17);
-  assert.equal(new Set(DESIGN_TEMPLATES.map((item) => item.id)).size, 17);
+  assert.equal(DESIGN_TEMPLATES.length, 25);
+  assert.equal(new Set(DESIGN_TEMPLATES.map((item) => item.id)).size, 25);
   assert.equal(DESIGN_TEMPLATES.filter((item) => item.collection === "botanical").length, 6);
   assert.equal(DESIGN_TEMPLATES.filter((item) => item.collection === "vintage").length, 4);
   assert.equal(DESIGN_TEMPLATES.filter((item) => item.collection === "artdeco").length, 7);
+  assert.equal(DESIGN_TEMPLATES.filter((item) => item.collection === "cyber").length, 8);
   for (const design of DESIGN_TEMPLATES) for (const format of DESIGN_FORMATS) for (const language of ["en", "de"]) {
     const scene = designScene(design.id, format, language);
     for (const item of scene.elements) {
@@ -50,13 +51,21 @@ test("all design collections compose within each stock format in both languages"
   }
 });
 
-test("ornaments are self-contained SVG with in-bounds artwork", () => {
-  assert.equal(BOTANICAL_ORNAMENTS.length, 6);
+test("ornaments are self-contained SVG with in-bounds artwork", async () => {
+  assert.equal(BOTANICAL_ORNAMENTS.length, 7);
   for (const item of BOTANICAL_ORNAMENTS) {
     const parsed = new dom.window.DOMParser().parseFromString(item.svg, "image/svg+xml");
     assert.equal(parsed.querySelector("parsererror"), null);
     assert.equal(parsed.querySelector("use, image, script, foreignObject"), null);
     assert.ok(parsed.querySelector("path"));
+    if (["rosemary-sprig", "citrus-branch"].includes(item.id)) {
+      const artwork = await fabric.loadSVGFromString(item.svg);
+      for (const object of artwork.objects.filter(Boolean)) {
+        const box = object.getBoundingRect();
+        assert.ok(box.left >= 0 && box.top >= 0, item.id);
+        assert.ok(box.left + box.width <= 124 && box.top + box.height <= 160, item.id);
+      }
+    }
   }
 });
 
@@ -181,6 +190,53 @@ test("current-size option avoids flattening special label layouts", () => {
   assert.equal(currentDesignFormat({ ...props, panels: [{ left: 0, top: 0, width: .5, height: 1 }] }), undefined);
   assert.equal(currentDesignFormat({ ...props, tailLength: 20 }), undefined);
   assert.equal(currentDesignFormat({ ...props, size: { width: 473, height: 142 } }), undefined);
+});
+
+test("Cyber frames keep painted geometry within every stock shape", async () => {
+  const { CYBER_FRAME_KINDS, cyberFrameSvg } = await import("../src/utils/cyber_frames.ts");
+  const { BORDER_KINDS, borderSvg } = await import("../src/utils/label_borders.ts");
+  assert.equal(CYBER_FRAME_KINDS.length, 12);
+  for (const kind of CYBER_FRAME_KINDS) for (const [width, height, shape] of [[591,354,"rect"],[472,709,"rect"],[591,354,"rounded_rect"],[472,472,"circle"]]) {
+    assert.ok(BORDER_KINDS.includes(kind));
+    const svg = cyberFrameSvg(kind, width, height, shape);
+    assert.equal(borderSvg(kind, width, height, shape), svg);
+    const parsed = await fabric.loadSVGFromString(svg);
+    assert.ok(parsed.objects.length > 5);
+    for (const object of parsed.objects.filter((item) => item && item.opacity > 0)) {
+      const box = object.getBoundingRect();
+      assert.ok(box.left >= 0 && box.top >= 0, `${kind}/${shape}`);
+      assert.ok(box.left + box.width <= width && box.top + box.height <= height, `${kind}/${shape}`);
+    }
+  }
+});
+
+test("Cyber text alignment matches previews and survives editable template reload", async () => {
+  for (const entry of DESIGN_TEMPLATES.filter((item) => item.collection === "cyber")) {
+    const scene = designScene(entry.id, DESIGN_FORMATS[0], "en");
+    const preview = new dom.window.DOMParser().parseFromString(designPreviewSvg(scene), "image/svg+xml");
+    const textElements = scene.elements.filter((item) => item.kind === "text");
+    [...preview.querySelectorAll("text")].forEach((node, i) => assert.equal(node.getAttribute("text-anchor"), textElements[i].align === "center" ? "middle" : "start"));
+    const template = await createDesignTemplate(entry.id, DESIGN_FORMATS[0], "en");
+    assert.equal(template.canvas.objects.find((item) => item.layerInfo?.kind === "frame").layerInfo.name, entry.frame);
+    const objects = await fabric.util.enlivenObjects(JSON.parse(JSON.stringify(template.canvas.objects)));
+    objects.filter((item) => item instanceof fabric.Textbox).forEach((object, i) => assert.equal(object.textAlign, textElements[i].align ?? "center"));
+  }
+  const scene = designScene("pantry", DESIGN_FORMATS[0], "en");
+  const preview = new dom.window.DOMParser().parseFromString(designPreviewSvg(scene), "image/svg+xml");
+  assert.equal(preview.querySelector("text").getAttribute("text-anchor"), "middle");
+});
+
+test("module housing has one straight right rail between its corners", async () => {
+  const { cyberFrameSvg } = await import("../src/utils/cyber_frames.ts");
+  for (const [width, height] of [[591, 354], [472, 709]]) {
+    const parsed = await fabric.loadSVGFromString(cyberFrameSvg("cyber-module", width, height));
+    const outline = parsed.objects.find((item) => item instanceof fabric.Path);
+    const points = outline.path.filter((command) => command[0] === "L");
+    const right = Math.max(...points.map((command) => command[1]));
+    const rail = points.filter((command) => command[1] === right);
+    assert.equal(rail.length, 2, "right rail must have only its two endpoints");
+    assert.equal(points.indexOf(rail[1]) - points.indexOf(rail[0]), 1, "right rail must have no intermediate kink");
+  }
 });
 
 test("saved serif designs load bundled fonts even inside a group", async () => {
