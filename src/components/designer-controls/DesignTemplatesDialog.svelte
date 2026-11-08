@@ -28,9 +28,15 @@
   let { show = $bindable(), onClose, labelProps, hasObjects, onApply }: Props = $props();
   let modal = $state<AppModal>();
   let selection = $state<DesignId>("pantry");
-  let collection = $state<"botanical" | "vintage">("botanical");
+  type Collection = (typeof DESIGN_TEMPLATES)[number]["collection"];
+  const collections = [
+    { id: "botanical", key: "designs.botanical" },
+    { id: "vintage", key: "designs.vintage" },
+    { id: "artdeco", key: "designs.artdeco" },
+  ] as const;
+  let collection = $state<Collection>("botanical");
   const designs = $derived(DESIGN_TEMPLATES.filter((item) => item.collection === collection));
-  const selectCollection = (next: "botanical" | "vintage") => {
+  const selectCollection = (next: Collection) => {
     collection = next;
     selection = DESIGN_TEMPLATES.find((item) => item.collection === next)!.id;
   };
@@ -88,20 +94,15 @@
   <AppModal bind:show bind:this={modal} title={$tr("designs.title")} size="lg" {onClose}>
     <p class="small text-body-secondary mb-3">{$tr("designs.intro")}</p>
     <div class="collection-tabs mb-3" role="group" aria-label={$tr("designs.collections")}>
-      <button
-        type="button"
-        class="btn btn-sm"
-        class:active={collection === "botanical"}
-        aria-pressed={collection === "botanical"}
-        disabled={applying}
-        onclick={() => selectCollection("botanical")}>{$tr("designs.botanical")}</button>
-      <button
-        type="button"
-        class="btn btn-sm"
-        class:active={collection === "vintage"}
-        aria-pressed={collection === "vintage"}
-        disabled={applying}
-        onclick={() => selectCollection("vintage")}>{$tr("designs.vintage")}</button>
+      {#each collections as item (item.id)}
+        <button
+          type="button"
+          class="btn btn-sm"
+          class:active={collection === item.id}
+          aria-pressed={collection === item.id}
+          disabled={applying}
+          onclick={() => selectCollection(item.id)}>{$tr(item.key)}</button>
+      {/each}
     </div>
     <div class="design-controls">
       <label class="small">
@@ -121,10 +122,7 @@
       </label>
     </div>
     {#if !ready}<p role="status" class="small text-body-secondary mt-3">{$tr("designs.loading")}</p>{/if}
-    <div
-      class="design-grid"
-      role="group"
-      aria-label={$tr(collection === "botanical" ? "designs.botanical" : "designs.vintage")}>
+    <div class="design-grid" role="group" aria-label={$tr(collections.find((item) => item.id === collection)!.key)}>
       {#each previews as item (item.id)}
         <button
           class="design-card"

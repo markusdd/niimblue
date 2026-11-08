@@ -1,3 +1,4 @@
+import { ART_DECO_FRAME_KINDS, artDecoFrameSvg, type ArtDecoFrameKind } from "./art_deco_frames";
 import { VINTAGE_FRAME_KINDS, vintageFrameSvg, type VintageFrameKind } from "./vintage_frames";
 import type { LabelShape } from "$/types";
 
@@ -30,6 +31,7 @@ export const BORDER_KINDS = [
   "herbarium",
   "botanical-wreath",
   ...VINTAGE_FRAME_KINDS,
+  ...ART_DECO_FRAME_KINDS,
 ] as const;
 
 export type BorderKind = (typeof BORDER_KINDS)[number];
@@ -37,6 +39,14 @@ export type BorderKind = (typeof BORDER_KINDS)[number];
 const frameWords = "frame border rahmen rand";
 
 export const borderKeywords: Record<BorderKind, string> = {
+  "deco-mitre": `${frameWords} art deco mitre miter overlapping geometry gehrung überlappung geometrisch`,
+  "deco-terminals": `${frameWords} art deco corner brackets terminals dots ecken endpunkte punkte`,
+  "deco-diamonds": `${frameWords} art deco diamonds jewels rauten diamant`,
+  "deco-fan": `${frameWords} art deco fan rays gatsby fächer strahlen faecher`,
+  "deco-marquee": `${frameWords} art deco marquee stepped octagon stufen achteck`,
+  "deco-linked": `${frameWords} art deco linked squares circuit verbunden quadrat`,
+  "deco-spire": `${frameWords} art deco spire diamond geometric spitze geometrisch`,
+  "deco-arcade": `${frameWords} art deco arcade columns rounded bars arkade säulen saulen`,
   cartouche: `${frameWords} cartouche vintage antique ornate label kartusche antik geschwungen doppellinie`,
   baroque: `${frameWords} baroque crest vintage antique barock wappen ornamental`,
   cameo: `${frameWords} cameo oval lobed vintage camee medaillon bogen`,
@@ -554,6 +564,9 @@ export const borderSvg = (
   height: number,
   shape: LabelShape = "rect",
 ): string => {
+  if ((ART_DECO_FRAME_KINDS as readonly string[]).includes(kind)) {
+    return artDecoFrameSvg(kind as ArtDecoFrameKind, width, height, shape);
+  }
   if ((VINTAGE_FRAME_KINDS as readonly string[]).includes(kind)) {
     return vintageFrameSvg(kind as VintageFrameKind, width, height, shape);
   }

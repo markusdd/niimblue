@@ -2,6 +2,8 @@
   import { tr, type TranslationKey } from "$/utils/i18n";
   import { iconMatches } from "$/utils/icon_search";
   import { BORDER_KINDS, borderKeywords, borderSvg, type BorderKind } from "$/utils/label_borders";
+  import { ART_DECO_FRAME_KINDS } from "$/utils/art_deco_frames";
+  import { VINTAGE_FRAME_KINDS } from "$/utils/vintage_frames";
   import type { LabelShape } from "$/types";
 
   interface Props {
@@ -12,6 +14,14 @@
   let { onFrame, labelShape = "rect" }: Props = $props();
 
   const frameKey: Record<BorderKind, TranslationKey> = {
+    "deco-mitre": "editor.frames.deco-mitre",
+    "deco-terminals": "editor.frames.deco-terminals",
+    "deco-diamonds": "editor.frames.deco-diamonds",
+    "deco-fan": "editor.frames.deco-fan",
+    "deco-marquee": "editor.frames.deco-marquee",
+    "deco-linked": "editor.frames.deco-linked",
+    "deco-spire": "editor.frames.deco-spire",
+    "deco-arcade": "editor.frames.deco-arcade",
     cartouche: "editor.frames.cartouche",
     baroque: "editor.frames.baroque",
     cameo: "editor.frames.cameo",
@@ -47,6 +57,27 @@
   };
 
   let search = $state("");
+  let collection = $state("all");
+  const botanical: readonly string[] = [
+    "vine",
+    "laurel",
+    "meadow",
+    "nouveau",
+    "botanical-corners",
+    "herbarium",
+    "botanical-wreath",
+  ];
+  const vintage: readonly string[] = [...VINTAGE_FRAME_KINDS, "scroll", "engraved", "ticket"];
+  const deco: readonly string[] = [...ART_DECO_FRAME_KINDS, "deco"];
+  const inCollection = (kind: BorderKind) =>
+    collection === "all" ||
+    (collection === "artdeco"
+      ? deco.includes(kind)
+      : collection === "botanical"
+        ? botanical.includes(kind)
+        : collection === "vintage"
+          ? vintage.includes(kind)
+          : kind === "circuit" || kind === "schematic");
 
   const svgUrl = (svg: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 
@@ -56,11 +87,24 @@
     return svgUrl(borderSvg(kind, wide ? 228 : 180, wide ? 132 : 180, shape));
   };
 
-  const hits = $derived(BORDER_KINDS.filter((kind) => iconMatches(search, kind, borderKeywords[kind])));
+  const hits = $derived(
+    BORDER_KINDS.filter((kind) => inCollection(kind) && iconMatches(search, kind, borderKeywords[kind])),
+  );
 </script>
 
 <div class="frame-picker">
-  <input type="text" class="form-control form-control-sm mb-1" placeholder={$tr("editor.iconpicker.search")} bind:value={search} />
+  <select class="form-select form-select-sm mb-1" bind:value={collection} aria-label={$tr("editor.frames.collection")}>
+    <option value="all">{$tr("editor.frames.all")}</option>
+    <option value="artdeco">{$tr("designs.artdeco")}</option>
+    <option value="vintage">{$tr("designs.vintage")}</option>
+    <option value="botanical">{$tr("designs.botanical")}</option>
+    <option value="technical">{$tr("editor.frames.technical")}</option>
+  </select>
+  <input
+    type="text"
+    class="form-control form-control-sm mb-1"
+    placeholder={$tr("editor.iconpicker.search")}
+    bind:value={search} />
   <div class="icons">
     {#each hits as kind (kind)}
       <button type="button" class="frame" data-frame={kind} title={$tr(frameKey[kind])} onclick={() => onFrame(kind)}>
@@ -68,7 +112,7 @@
       </button>
     {/each}
   </div>
-  {#if search.trim() && hits.length === 0}
+  {#if hits.length === 0}
     <p class="empty">{$tr("editor.iconpicker.empty")}</p>
   {/if}
 </div>

@@ -45,3 +45,22 @@ bundled Book, Serif and Condensed faces. The same scene still drives previews
 and editable objects. Botanical and Vintage are separate collections in the
 menu. Frame geometry is evaluated for the actual width/height and stock shape;
 round stock gets a circular medallion treatment rather than a stretched rectangle.
+
+## Art Deco collection
+
+Eight original geometric frames add layered mitres, open terminal corners,
+diamond links, corner fans, a stepped marquee, linked corner squares, spires,
+and rounded arcade rails. The earlier Deco frame is included in the same
+frame-picker filter. Botanical, Vintage and Technical filters remain available.
+Geometry is generated at the real design size with independent line widths;
+corner motifs retain proportions and round stock gets ring-based adaptations.
+White terminal/diamond interiors are paper cutouts, following the standard
+colour preview and monochrome print-mask behavior.
+
+Four designs in `deco_templates.ts` pair these frames with the bundled Modern,
+Condensed, Serif and Mono faces: Reserve, Atelier edition, Catalogue No. 07,
+and Celebration. Each has English/German copy and landscape, portrait and round
+compositions. All fourteen designs across the three collections now undergo
+Fabric serialization/reload tests in all three formats; new frame paths are
+also checked for painted bounds on rectangular, rounded and circular paper.
+Physical print review is still needed for fine strokes and the smallest captions.

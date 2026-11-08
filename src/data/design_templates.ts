@@ -1,3 +1,4 @@
+import { DECO_DESIGNS, isDecoDesign, decoDesignScene } from "./deco_templates";
 import { VINTAGE_DESIGNS, isVintageDesign, vintageDesignScene } from "./vintage_templates";
 import type { BundledFontFamily } from "./bundled_fonts";
 import type { LabelProps, LabelShape } from "../types";
@@ -25,7 +26,7 @@ const BOTANICAL_DESIGNS = [
   { id: "floral", collection: "botanical", ornament: "wildflower-spray", en: "Floral gift", de: "Blumengruß" },
   { id: "artisan", collection: "botanical", ornament: "artisan-leaf", en: "Minimal artisan", de: "Handgemacht" },
 ] as const;
-export const DESIGN_TEMPLATES = [...BOTANICAL_DESIGNS, ...VINTAGE_DESIGNS] as const;
+export const DESIGN_TEMPLATES = [...BOTANICAL_DESIGNS, ...VINTAGE_DESIGNS, ...DECO_DESIGNS] as const;
 export type DesignId = (typeof DESIGN_TEMPLATES)[number]["id"];
 export type DesignLanguage = "en" | "de";
 export interface DesignFormat {
@@ -164,6 +165,7 @@ const COPY = {
 
 /** Explicit compositions for each aspect; illustration proportions never stretch. */
 export function designScene(id: DesignId, format: DesignFormat, language: DesignLanguage = "en"): DesignScene {
+  if (isDecoDesign(id)) return decoDesignScene(id, format, language);
   if (isVintageDesign(id)) return vintageDesignScene(id, format, language);
   const { width: w, height: h, shape } = format;
   const info = BOTANICAL_DESIGNS.find((item) => item.id === id)!;
