@@ -296,6 +296,8 @@
     "params.generic.flip.horizontal": "Flip horizontally",
     "params.generic.flip.vertical": "Flip vertically",
     "params.generic.rotate_quarter": "Rotate 90°",
+    "editor.iconpicker.ornament_collection": "Ornament collection",
+    "editor.iconpicker.all_ornaments": "All ornaments",
     "editor.iconpicker.source.ornaments": "Ornaments",
     "editor.iconpicker.ornaments_credit": "Original NiimBlue vector ornaments",
     "editor.iconpicker.ornaments_hint": "Add corners, dividers and flourishes individually. Rotate or flip them to compose your own decoration.",

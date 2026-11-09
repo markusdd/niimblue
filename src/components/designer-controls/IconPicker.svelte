@@ -9,6 +9,10 @@
   import { materialKeywords } from "$/data/material_keywords";
   import { CLIPART, PHOSPHOR_NOTICE, type ClipartIcon } from "$/data/clipart";
 
+  import type { DecorativeOrnament, OrnamentCollection } from "$/data/decorative_ornaments";
+
+  type PickerIcon = ClipartIcon & Partial<Pick<DecorativeOrnament, "name" | "collection">>;
+
   interface Props {
     onSubmit: (i: MaterialIcon) => void;
     onSubmitSvg: (i: string, name?: string) => void;
@@ -32,9 +36,10 @@
   let search = $state<string>("");
   let source = $state<(typeof sources)[number]["id"]>("clipart");
   let deleteMode = $state<boolean>(false);
-  let extraIcons = $state<Partial<Record<"tabler" | "health" | "botanical" | "ornaments", ClipartIcon[]>>>({});
+  let ornamentCollection = $state<"all" | OrnamentCollection>("all");
+  let extraIcons = $state<Partial<Record<"tabler" | "health" | "botanical" | "ornaments", PickerIcon[]>>>({});
   let collectionFailed = $state<Partial<Record<"tabler" | "health" | "botanical" | "ornaments", boolean>>>({});
-  const collectionLoads: Partial<Record<"tabler" | "health" | "botanical" | "ornaments", Promise<ClipartIcon[]>>> = {};
+  const collectionLoads: Partial<Record<"tabler" | "health" | "botanical" | "ornaments", Promise<PickerIcon[]>>> = {};
 
   $effect(() => {
     if (source !== "tabler" && source !== "health" && source !== "botanical" && source !== "ornaments") return;
@@ -75,7 +80,7 @@
       !extraIcons[source] &&
       !collectionFailed[source],
   );
-  const activeClipart = $derived(
+  const activeClipart: PickerIcon[] = $derived(
     source === "clipart"
       ? CLIPART
       : source === "tabler" || source === "health" || source === "botanical" || source === "ornaments"
@@ -85,7 +90,13 @@
 
   const svgUrl = (svg: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 
-  const clipartHits = $derived(activeClipart.filter((item) => iconMatches(search, item.id, item.keywords)));
+  const clipartHits = $derived(
+    activeClipart.filter(
+      (item: PickerIcon) =>
+        (source !== "ornaments" || ornamentCollection === "all" || item.collection === ornamentCollection) &&
+        iconMatches(search, item.id, `${item.name ?? ""} ${item.keywords}`),
+    ),
+  );
   const materialHits = $derived(
     source === "material" ? iconNames.filter((name) => iconMatches(search, name, materialKeywords[name] ?? "")) : [],
   );
@@ -148,6 +159,18 @@
         {/each}
       </div>
 
+      {#if source === "ornaments"}
+        <select
+          class="form-select form-select-sm mb-1"
+          bind:value={ornamentCollection}
+          aria-label={$tr("editor.iconpicker.ornament_collection")}>
+          <option value="all">{$tr("editor.iconpicker.all_ornaments")}</option>
+          <option value="vintage">{$tr("designs.vintage")}</option>
+          <option value="artdeco">{$tr("designs.artdeco")}</option>
+          <option value="cyber">{$tr("designs.cyber")}</option>
+        </select>
+      {/if}
+
       <input
         type="text"
         class="form-control form-control-sm mb-1"
@@ -164,8 +187,8 @@
               class:botanical={source === "botanical"}
               class:ornament={source === "ornaments"}
               data-clipart={item.id}
-              title={"name" in item ? String(item.name) : item.id}
-              onclick={() => onClipart(item.svg, item.id)}>
+              title={item.name ?? item.id}
+              onclick={() => onClipart(item.svg, item.name ?? item.id)}>
               <img alt="" src={svgUrl(item.svg)} />
             </button>
           {/each}

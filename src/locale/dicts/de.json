@@ -258,6 +258,8 @@
     "params.generic.flip.horizontal": "Horizontal spiegeln",
     "params.generic.flip.vertical": "Vertikal spiegeln",
     "params.generic.rotate_quarter": "Um 90° drehen",
+    "editor.iconpicker.ornament_collection": "Ornamentkollektion",
+    "editor.iconpicker.all_ornaments": "Alle Ornamente",
     "editor.iconpicker.source.ornaments": "Ornamente",
     "editor.iconpicker.ornaments_credit": "Originale NiimBlue-Vektorornamente",
     "editor.iconpicker.ornaments_hint": "Ecken, Trennlinien und Schnörkel einzeln einfügen. Durch Drehen oder Spiegeln eigene Verzierungen gestalten.",

@@ -1,10 +1,15 @@
+import { GEOMETRIC_ORNAMENTS } from "./geometric_ornaments";
+import { VINTAGE_ORNAMENTS } from "./vintage_ornaments";
+
 /** Original printable vector ornaments. Each element is independent of a frame. */
+export type OrnamentCollection = "vintage" | "artdeco" | "cyber";
 export interface DecorativeOrnament {
   id: string;
   name: string;
   keywords: string;
   viewBox: string;
   svg: string;
+  collection: OrnamentCollection;
 }
 
 const path = (d: string, filled = false) => `<path d="${d}"${filled ? ' fill="#000" stroke-width="0.7"' : ""}/>`;
@@ -20,6 +25,7 @@ const entry = (
 ): DecorativeOrnament => ({
   id,
   name,
+  collection: "vintage",
   keywords: `${words} ornament decoration flourish scroll vintage ornate schnörkel schnoerkel verzierung dekor`,
   viewBox: `0 0 ${width} ${height}`,
   svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" fill="none" stroke="#000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${drawing}</svg>`,
@@ -44,6 +50,8 @@ const knot = path(
 );
 
 export const DECORATIVE_ORNAMENTS: DecorativeOrnament[] = [
+  ...VINTAGE_ORNAMENTS,
+  ...GEOMETRIC_ORNAMENTS,
   entry(
     "acanthus-corner",
     "Acanthus corner",

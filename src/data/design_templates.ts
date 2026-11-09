@@ -1,3 +1,4 @@
+import { ORNAMENT_DESIGNS, isOrnamentDesign, ornamentDesignScene } from "./ornament_templates";
 import { CYBER_DESIGNS, isCyberDesign, cyberDesignScene } from "./cyber_templates";
 import { DECO_DESIGNS, isDecoDesign, decoDesignScene } from "./deco_templates";
 import { VINTAGE_DESIGNS, isVintageDesign, vintageDesignScene } from "./vintage_templates";
@@ -37,7 +38,13 @@ const BOTANICAL_DESIGNS = [
   { id: "berry-harvest", collection: "botanical", ornament: "berry-branch", en: "Berry harvest", de: "Beerenernte" },
   { id: "poppy-field", collection: "botanical", ornament: "poppy-stem", en: "Poppy field", de: "Mohnwiese" },
 ] as const;
-export const DESIGN_TEMPLATES = [...BOTANICAL_DESIGNS, ...VINTAGE_DESIGNS, ...DECO_DESIGNS, ...CYBER_DESIGNS] as const;
+export const DESIGN_TEMPLATES = [
+  ...BOTANICAL_DESIGNS,
+  ...ORNAMENT_DESIGNS,
+  ...VINTAGE_DESIGNS,
+  ...DECO_DESIGNS,
+  ...CYBER_DESIGNS,
+] as const;
 export type DesignId = (typeof DESIGN_TEMPLATES)[number]["id"];
 export type DesignLanguage = "en" | "de";
 export interface DesignFormat {
@@ -273,9 +280,7 @@ function asymmetricBotanicalScene(
     const artX = artOnLeft ? w * 0.035 : w * 0.78;
     const textX = artOnLeft ? w * 0.3 : w * 0.09;
     const textW = w * 0.64;
-    elements.push(
-      ornament(ornamentId, artX, h * 0.07, w * 0.19, h * 0.84, artOnLeft),
-    );
+    elements.push(ornament(ornamentId, artX, h * 0.07, w * 0.19, h * 0.84, artOnLeft));
     elements.push(
       editableText(eyebrow, textX, h * 0.13, textW, h * 0.09, unit * 0.045, "NiimBlue Condensed", false, 80),
     );
@@ -291,6 +296,7 @@ function asymmetricBotanicalScene(
 
 /** Explicit compositions for each aspect; illustration proportions never stretch. */
 export function designScene(id: DesignId, format: DesignFormat, language: DesignLanguage = "en"): DesignScene {
+  if (isOrnamentDesign(id)) return ornamentDesignScene(id, format, language);
   if (isCyberDesign(id)) return cyberDesignScene(id, format, language);
   if (isDecoDesign(id)) return decoDesignScene(id, format, language);
   if (isVintageDesign(id)) return vintageDesignScene(id, format, language);

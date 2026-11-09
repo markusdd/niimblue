@@ -25,6 +25,7 @@ fabric.setEnv({ ...fabric.getEnv(), window: dom.window, document: dom.window.doc
 const { configureFabric } = await import("../src/defaults.ts");
 configureFabric();
 const { DESIGN_TEMPLATES, DESIGN_FORMATS, designScene, currentDesignFormat } = await import("../src/data/design_templates.ts");
+const { ORNAMENT_DESIGNS } = await import("../src/data/ornament_templates.ts");
 const { DECORATIVE_ORNAMENTS } = await import("../src/data/decorative_ornaments.ts");
 const { BOTANICAL_ORNAMENTS } = await import("../src/data/botanical_ornaments.ts");
 const { designPreviewSvg } = await import("../src/utils/design_template_preview.ts");
@@ -32,12 +33,12 @@ const { createDesignTemplate } = await import("../src/utils/design_template_fact
 const { ExportedLabelTemplateSchema } = await import("../src/types.ts");
 
 test("all design collections compose within each stock format in both languages", () => {
-  assert.equal(DESIGN_TEMPLATES.length, 35);
-  assert.equal(new Set(DESIGN_TEMPLATES.map((item) => item.id)).size, 35);
+  assert.equal(DESIGN_TEMPLATES.length, 44);
+  assert.equal(new Set(DESIGN_TEMPLATES.map((item) => item.id)).size, 44);
   assert.equal(DESIGN_TEMPLATES.filter((item) => item.collection === "botanical").length, 10);
-  assert.equal(DESIGN_TEMPLATES.filter((item) => item.collection === "vintage").length, 10);
-  assert.equal(DESIGN_TEMPLATES.filter((item) => item.collection === "artdeco").length, 7);
-  assert.equal(DESIGN_TEMPLATES.filter((item) => item.collection === "cyber").length, 8);
+  assert.equal(DESIGN_TEMPLATES.filter((item) => item.collection === "vintage").length, 13);
+  assert.equal(DESIGN_TEMPLATES.filter((item) => item.collection === "artdeco").length, 10);
+  assert.equal(DESIGN_TEMPLATES.filter((item) => item.collection === "cyber").length, 11);
   for (const design of DESIGN_TEMPLATES) for (const format of DESIGN_FORMATS) for (const language of ["en", "de"]) {
     const scene = designScene(design.id, format, language);
     for (const item of scene.elements) {
@@ -54,7 +55,7 @@ test("all design collections compose within each stock format in both languages"
 
 test("ornaments are self-contained SVG with in-bounds artwork", async () => {
   assert.equal(BOTANICAL_ORNAMENTS.length, 17);
-  assert.equal(DECORATIVE_ORNAMENTS.length, 14);
+  assert.equal(DECORATIVE_ORNAMENTS.length, 32);
   const ornaments = [...BOTANICAL_ORNAMENTS, ...DECORATIVE_ORNAMENTS];
   assert.equal(new Set(ornaments.map((item) => item.id)).size, ornaments.length);
   for (const item of ornaments) {
@@ -151,7 +152,7 @@ test("vintage frames stay inside paper and preserve blank centres across aspect 
 });
 
 test("vintage template frames retain frame metadata and stretch layout behavior", async () => {
-  for (const entry of DESIGN_TEMPLATES.filter((item) => item.collection === "vintage")) {
+  for (const entry of DESIGN_TEMPLATES.filter((item) => item.collection === "vintage" && "frame" in item)) {
     const template = await createDesignTemplate(entry.id, DESIGN_FORMATS[0], "en");
     const frame = template.canvas.objects.find((item) => item.layerInfo?.kind === "frame");
     assert.equal(frame.layerInfo.name, entry.frame);
@@ -178,7 +179,7 @@ test("Art Deco painted geometry stays in bounds in every format", async () => {
 });
 
 test("Art Deco templates preserve named frames and bundled typography on reload", async () => {
-  for (const entry of DESIGN_TEMPLATES.filter((item) => item.collection === "artdeco")) {
+  for (const entry of DESIGN_TEMPLATES.filter((item) => item.collection === "artdeco" && "frame" in item)) {
     const template = await createDesignTemplate(entry.id, DESIGN_FORMATS[0], "en");
     const frame = template.canvas.objects.find((item) => item.layerInfo?.kind === "frame");
     assert.equal(frame.layerInfo.name, entry.frame);
@@ -216,7 +217,7 @@ test("Cyber frames keep painted geometry within every stock shape", async () => 
 });
 
 test("Cyber text alignment matches previews and survives editable template reload", async () => {
-  for (const entry of DESIGN_TEMPLATES.filter((item) => item.collection === "cyber")) {
+  for (const entry of DESIGN_TEMPLATES.filter((item) => item.collection === "cyber" && "frame" in item)) {
     const scene = designScene(entry.id, DESIGN_FORMATS[0], "en");
     const preview = new dom.window.DOMParser().parseFromString(designPreviewSvg(scene), "image/svg+xml");
     const textElements = scene.elements.filter((item) => item.kind === "text");
@@ -249,4 +250,41 @@ test("saved serif designs load bundled fonts even inside a group", async () => {
   assert.equal(usesBundledDesignFonts({ objects: [{ objects: [{ fontFamily: "NiimBlue Serif" }] }] }), true);
   assert.equal(usesBundledDesignFonts({ objects: [{ fontFamily: "Local User Font" }] }), false);
   assert.equal(usesBundledDesignFonts(null), false);
+});
+
+
+test("ornament compositions use independent illustrations and preserve asymmetric alignment", async () => {
+  assert.equal(ORNAMENT_DESIGNS.length, 9);
+  for (const collection of ["vintage", "artdeco", "cyber"]) {
+    assert.equal(ORNAMENT_DESIGNS.filter((item) => item.collection === collection).length, 3);
+    assert.equal(DECORATIVE_ORNAMENTS.filter((item) => item.collection === collection).length, collection === "vintage" ? 20 : 6);
+  }
+  for (const entry of ORNAMENT_DESIGNS) for (const format of DESIGN_FORMATS) for (const language of ["en", "de"]) {
+    const scene = designScene(entry.id, format, language);
+    assert.equal(scene.elements.filter((item) => item.kind === "svg").length, entry.id === "deco-orbit-pendant" ? 1 : 2, entry.id);
+    assert.ok(!scene.elements.some((item) => item.role === "frame"), entry.id);
+    assert.ok(scene.elements.some((item) => item.kind === "text" && ["left", "right"].includes(item.align)), entry.id);
+    const artwork = scene.elements.filter((item) => item.kind === "svg");
+    const captions = scene.elements.filter((item) => item.kind === "text");
+    for (const art of artwork) for (const caption of captions) {
+      const overlapX = Math.min(art.x + art.width, caption.x + caption.width) - Math.max(art.x, caption.x);
+      const overlapY = Math.min(art.y + art.height, caption.y + caption.height) - Math.max(art.y, caption.y);
+      assert.ok(overlapX <= .01 || overlapY <= .01, `${entry.id}/${format.id}: ${art.name} overlaps ${caption.text}`);
+    }
+    const template = await createDesignTemplate(entry.id, format, language);
+    assert.ok(!template.canvas.objects.some((item) => item.layerInfo?.kind === "frame"), entry.id);
+    const objects = await fabric.util.enlivenObjects(JSON.parse(JSON.stringify(template.canvas.objects)));
+    const texts = objects.filter((item) => item instanceof fabric.Textbox);
+    const elements = scene.elements.filter((item) => item.kind === "text");
+    assert.deepEqual(texts.map((item) => item.textAlign), elements.map((item) => item.align ?? "center"));
+    // Every illustrated element on round stock stays within the physical disc,
+    // including its transparent retained margins after flips and serialization.
+    if (format.shape === "circle") {
+      for (const element of scene.elements.filter((item) => item.kind === "svg")) {
+        for (const x of [element.x, element.x + element.width]) for (const y of [element.y, element.y + element.height]) {
+          assert.ok(Math.hypot(x - format.width / 2, y - format.height / 2) <= format.width / 2 + .001, `${entry.id}: art outside circular paper`);
+        }
+      }
+    }
+  }
 });
