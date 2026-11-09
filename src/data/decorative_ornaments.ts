@@ -1,3 +1,4 @@
+import { DECO_CORNER_ORNAMENTS } from "./deco_corner_ornaments";
 import { GEOMETRIC_ORNAMENTS } from "./geometric_ornaments";
 import { VINTAGE_ORNAMENTS } from "./vintage_ornaments";
 
@@ -52,6 +53,7 @@ const knot = path(
 export const DECORATIVE_ORNAMENTS: DecorativeOrnament[] = [
   ...VINTAGE_ORNAMENTS,
   ...GEOMETRIC_ORNAMENTS,
+  ...DECO_CORNER_ORNAMENTS,
   entry(
     "acanthus-corner",
     "Acanthus corner",

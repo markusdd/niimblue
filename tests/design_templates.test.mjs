@@ -55,7 +55,7 @@ test("all design collections compose within each stock format in both languages"
 
 test("ornaments are self-contained SVG with in-bounds artwork", async () => {
   assert.equal(BOTANICAL_ORNAMENTS.length, 17);
-  assert.equal(DECORATIVE_ORNAMENTS.length, 32);
+  assert.equal(DECORATIVE_ORNAMENTS.length, 38);
   const ornaments = [...BOTANICAL_ORNAMENTS, ...DECORATIVE_ORNAMENTS];
   assert.equal(new Set(ornaments.map((item) => item.id)).size, ornaments.length);
   for (const item of ornaments) {
@@ -201,7 +201,7 @@ test("current-size option avoids flattening special label layouts", () => {
 test("Cyber frames keep painted geometry within every stock shape", async () => {
   const { CYBER_FRAME_KINDS, cyberFrameSvg } = await import("../src/utils/cyber_frames.ts");
   const { BORDER_KINDS, borderSvg } = await import("../src/utils/label_borders.ts");
-  assert.equal(CYBER_FRAME_KINDS.length, 12);
+  assert.equal(CYBER_FRAME_KINDS.length, 13);
   for (const kind of CYBER_FRAME_KINDS) for (const [width, height, shape] of [[591,354,"rect"],[472,709,"rect"],[591,354,"rounded_rect"],[472,472,"circle"]]) {
     assert.ok(BORDER_KINDS.includes(kind));
     const svg = cyberFrameSvg(kind, width, height, shape);
@@ -257,7 +257,7 @@ test("ornament compositions use independent illustrations and preserve asymmetri
   assert.equal(ORNAMENT_DESIGNS.length, 9);
   for (const collection of ["vintage", "artdeco", "cyber"]) {
     assert.equal(ORNAMENT_DESIGNS.filter((item) => item.collection === collection).length, 3);
-    assert.equal(DECORATIVE_ORNAMENTS.filter((item) => item.collection === collection).length, collection === "vintage" ? 20 : 6);
+    assert.equal(DECORATIVE_ORNAMENTS.filter((item) => item.collection === collection).length, collection === "vintage" ? 20 : collection === "artdeco" ? 12 : 6);
   }
   for (const entry of ORNAMENT_DESIGNS) for (const format of DESIGN_FORMATS) for (const language of ["en", "de"]) {
     const scene = designScene(entry.id, format, language);

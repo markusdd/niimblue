@@ -26,6 +26,7 @@
     "cyber-reactor": "editor.frames.cyber-reactor",
     "cyber-vector": "editor.frames.cyber-vector",
     "cyber-terminal": "editor.frames.cyber-terminal",
+    "cyber-overdrive": "editor.frames.cyber-overdrive",
     "cyber-aperture": "editor.frames.cyber-aperture",
     "deco-quadrant": "editor.frames.deco-quadrant",
     "deco-orbit": "editor.frames.deco-orbit",

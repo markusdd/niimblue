@@ -52,6 +52,7 @@ export const borderKeywords: Record<BorderKind, string> = {
   "cyber-reactor": `${frameWords} cyber scifi science fiction technical technologie reactor panel reaktor`,
   "cyber-vector": `${frameWords} cyber scifi science fiction technical technologie vector angular diagonal vektor`,
   "cyber-terminal": `${frameWords} cyber scifi science fiction technical technologie terminal header konsole`,
+  "cyber-overdrive": `${frameWords} cyber overdrive angular opposing corners armour rails hatch diagonal diagonalstreben panzerung ecken schienen`,
   "cyber-aperture": `${frameWords} cyber scifi science fiction technical technologie aperture brackets blende`,
   "deco-quadrant": `${frameWords} art deco quadrant corner sunrays sonnenstrahl-ecken curved architectural geometric bogen geometrisch`,
   "deco-orbit": `${frameWords} art deco orbit interlocking arcs verbundene bögen curved architectural geometric bogen geometrisch`,

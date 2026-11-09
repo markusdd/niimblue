@@ -14,6 +14,7 @@ export const CYBER_FRAME_KINDS = [
   "cyber-vector",
   "cyber-terminal",
   "cyber-aperture",
+  "cyber-overdrive",
 ] as const;
 export type CyberFrameKind = (typeof CYBER_FRAME_KINDS)[number];
 const n = (v: number) => String(Math.round(v * 1000) / 1000);
@@ -124,6 +125,140 @@ function ringBlock(cx: number, cy: number, r: number, t: number, a: number, b: n
     pts.push([cx + Math.cos(angle) * r, cy + Math.sin(angle) * r]);
   }
   return poly(pts, 0, true, "black");
+}
+
+/** Opposing armoured corners with transparent channels and evenly pitched rungs. */
+function overdriveFrame(w: number, h: number, circle: boolean): string {
+  const u = Math.min(w, h),
+    thickness = Math.max(1.5, u * 0.026),
+    gap = thickness * 2.15,
+    fine = thickness * 0.2;
+  const opposite = (body: string) => `<g transform="translate(${n(w)} ${n(h)}) rotate(180)">${body}</g>`;
+  if (circle) {
+    const cx = w / 2,
+      cy = h / 2,
+      radius = u * 0.418;
+    let corner = arc(cx, cy, radius, -112, 22, thickness);
+    corner += arc(cx, cy, radius - gap, -88, 10, thickness * 0.55);
+    for (let angle = -82; angle <= 4; angle += 12) {
+      const a = (angle * Math.PI) / 180;
+      corner += poly(
+        [
+          [cx + Math.cos(a) * (radius - thickness * 0.5), cy + Math.sin(a) * (radius - thickness * 0.5)],
+          [cx + Math.cos(a) * (radius - gap + thickness * 0.28), cy + Math.sin(a) * (radius - gap + thickness * 0.28)],
+        ],
+        fine,
+      );
+    }
+    corner += ringBlock(cx, cy, radius - thickness * 0.5, thickness * 1.05, -65, -36);
+    return corner + opposite(corner);
+  }
+  const p = u * 0.075,
+    right = w - p,
+    cut = u * 0.13,
+    start = w * 0.26,
+    end = h * 0.68,
+    // Offsetting a 45° bevel shifts its intersections by (sqrt(2) - 1) * gap.
+    bevelShift = (Math.SQRT2 - 1) * gap;
+  let corner = poly(
+    [
+      [start, p],
+      [right - cut, p],
+      [right, p + cut],
+      [right, end],
+    ],
+    thickness,
+  );
+  corner += poly(
+    [
+      [w * 0.49, p + gap],
+      [right - cut - bevelShift, p + gap],
+      [right - gap, p + cut + bevelShift],
+      [right - gap, h * 0.47],
+    ],
+    thickness * 0.55,
+  );
+  // Tapered terminals and shallow armour tabs use the same 45° chamfers.
+  corner += poly(
+    [
+      [start - thickness, p - thickness / 2],
+      [start, p - thickness / 2],
+      [start, p + thickness / 2],
+    ],
+    0,
+    true,
+    "black",
+  );
+  corner += poly(
+    [
+      [right - thickness / 2, end],
+      [right + thickness / 2, end],
+      [right - thickness / 2, end + thickness],
+    ],
+    0,
+    true,
+    "black",
+  );
+  corner += poly(
+    [
+      [w * 0.53, p - thickness / 2],
+      [w * 0.53 + thickness * 0.55, p - thickness * 1.05],
+      [right - cut - thickness * 0.55, p - thickness * 1.05],
+      [right - cut, p - thickness / 2],
+    ],
+    0,
+    true,
+    "black",
+  );
+  corner += poly(
+    [
+      [right + thickness / 2, h * 0.39],
+      [right + thickness * 1.05, h * 0.39 + thickness * 0.55],
+      [right + thickness * 1.05, h * 0.5],
+      [right + thickness / 2, h * 0.5 + thickness * 0.55],
+    ],
+    0,
+    true,
+    "black",
+  );
+  const rung = gap - thickness * 0.775;
+  for (let x = w * 0.51; x + rung < right - cut - bevelShift; x += thickness * 1.7) {
+    corner += poly(
+      [
+        [x + rung, p + thickness * 0.5],
+        [x, p + gap - thickness * 0.275],
+      ],
+      fine,
+    );
+  }
+  for (let y = p + cut + bevelShift + rung; y < h * 0.45; y += thickness * 1.7) {
+    corner += poly(
+      [
+        [right - thickness * 0.5, y],
+        [right - gap + thickness * 0.275, y - rung],
+      ],
+      fine,
+    );
+  }
+  const accentOffset = gap * 0.6,
+    accentShift = (Math.SQRT2 - 1) * accentOffset;
+  corner += poly(
+    [
+      [w * 0.62, p + gap + thickness * 0.65],
+      [right - cut - bevelShift - thickness * 0.65, p + gap + thickness * 0.65],
+    ],
+    fine,
+  );
+  corner += poly(
+    [
+      [right + accentOffset, h * 0.31],
+      [right + accentOffset, p + cut - accentShift],
+      [right - cut + accentShift, p - accentOffset],
+      [w * 0.6, p - accentOffset],
+    ],
+    fine,
+  );
+  return corner + opposite(corner);
 }
 function roundFrame(kind: CyberFrameKind, w: number, h: number, u: number, sw: number): string {
   const cx = w / 2,
@@ -418,7 +553,8 @@ export function cyberFrameSvg(kind: CyberFrameKind, width: number, height: numbe
     bh = h - 2 * p,
     c = u * 0.115;
   let body = "";
-  if (
+  if (kind === "cyber-overdrive") body = overdriveFrame(w, h, shape === "circle");
+  else if (
     ["cyber-docking", "cyber-signal", "cyber-reactor", "cyber-vector", "cyber-terminal", "cyber-aperture"].includes(
       kind,
     )
