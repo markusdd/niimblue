@@ -20,6 +20,7 @@
 
   const iconNames = Object.keys(iconCodepoints) as MaterialIcon[];
   const sources = [
+    { id: "ornaments", key: "editor.iconpicker.source.ornaments" },
     { id: "botanical", key: "editor.iconpicker.source.botanical" },
     { id: "clipart", key: "editor.iconpicker.source.clipart" },
     { id: "tabler", key: "editor.iconpicker.source.tabler" },
@@ -31,39 +32,64 @@
   let search = $state<string>("");
   let source = $state<(typeof sources)[number]["id"]>("clipart");
   let deleteMode = $state<boolean>(false);
-  let extraIcons = $state<Partial<Record<"tabler" | "health" | "botanical", ClipartIcon[]>>>({});
-  let collectionFailed = $state<Partial<Record<"tabler" | "health" | "botanical", boolean>>>({});
-  const collectionLoads: Partial<Record<"tabler" | "health" | "botanical", Promise<ClipartIcon[]>>> = {};
+  let extraIcons = $state<Partial<Record<"tabler" | "health" | "botanical" | "ornaments", ClipartIcon[]>>>({});
+  let collectionFailed = $state<Partial<Record<"tabler" | "health" | "botanical" | "ornaments", boolean>>>({});
+  const collectionLoads: Partial<Record<"tabler" | "health" | "botanical" | "ornaments", Promise<ClipartIcon[]>>> = {};
 
   $effect(() => {
-    if (source !== "tabler" && source !== "health" && source !== "botanical") return;
+    if (source !== "tabler" && source !== "health" && source !== "botanical" && source !== "ornaments") return;
     const selected = source;
     if (extraIcons[selected] || collectionFailed[selected]) return;
-    collectionLoads[selected] ??= (selected === "tabler" ? import("$/data/tabler_clipart") : selected === "botanical" ? import("$/data/botanical_ornaments") : import("$/data/health_clipart"))
-      .then((module) => "CLIPART" in module ? module.CLIPART : module.BOTANICAL_ORNAMENTS);
-    void collectionLoads[selected]!.then((icons) => { extraIcons[selected] = icons; }).catch((error) => {
+    collectionLoads[selected] ??= (
+      selected === "ornaments"
+        ? import("$/data/decorative_ornaments")
+        : selected === "tabler"
+          ? import("$/data/tabler_clipart")
+          : selected === "botanical"
+            ? import("$/data/botanical_ornaments")
+            : import("$/data/health_clipart")
+    ).then((module) =>
+      "DECORATIVE_ORNAMENTS" in module
+        ? module.DECORATIVE_ORNAMENTS
+        : "CLIPART" in module
+          ? module.CLIPART
+          : module.BOTANICAL_ORNAMENTS,
+    );
+    void collectionLoads[selected]!.then((icons) => {
+      extraIcons[selected] = icons;
+    }).catch((error) => {
       collectionFailed[selected] = true;
       Toasts.error(error);
     });
   });
 
-  const isClipart = $derived(source === "botanical" || source === "clipart" || source === "tabler" || source === "health");
-  const loading = $derived((source === "tabler" || source === "health" || source === "botanical") && !extraIcons[source] && !collectionFailed[source]);
-  const activeClipart = $derived(source === "clipart" ? CLIPART : source === "tabler" || source === "health" || source === "botanical" ? extraIcons[source] ?? [] : []);
+  const isClipart = $derived(
+    source === "ornaments" ||
+      source === "botanical" ||
+      source === "clipart" ||
+      source === "tabler" ||
+      source === "health",
+  );
+  const loading = $derived(
+    (source === "tabler" || source === "health" || source === "botanical" || source === "ornaments") &&
+      !extraIcons[source] &&
+      !collectionFailed[source],
+  );
+  const activeClipart = $derived(
+    source === "clipart"
+      ? CLIPART
+      : source === "tabler" || source === "health" || source === "botanical" || source === "ornaments"
+        ? (extraIcons[source] ?? [])
+        : [],
+  );
 
   const svgUrl = (svg: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 
-  const clipartHits = $derived(
-    activeClipart.filter((item) => iconMatches(search, item.id, item.keywords)),
-  );
+  const clipartHits = $derived(activeClipart.filter((item) => iconMatches(search, item.id, item.keywords)));
   const materialHits = $derived(
-    source === "material"
-      ? iconNames.filter((name) => iconMatches(search, name, materialKeywords[name] ?? ""))
-      : [],
+    source === "material" ? iconNames.filter((name) => iconMatches(search, name, materialKeywords[name] ?? "")) : [],
   );
-  const mineHits = $derived(
-    source === "mine" ? $userIcons.filter((icon) => iconMatches(search, icon.name, "")) : [],
-  );
+  const mineHits = $derived(source === "mine" ? $userIcons.filter((icon) => iconMatches(search, icon.name, "")) : []);
   const showEmpty = $derived.by(() => {
     const query = search.trim();
     if (!query) return false;
@@ -122,23 +148,38 @@
         {/each}
       </div>
 
-      <input type="text" class="form-control form-control-sm mb-1" placeholder={$tr("editor.iconpicker.search")} bind:value={search} />
+      <input
+        type="text"
+        class="form-control form-control-sm mb-1"
+        placeholder={$tr("editor.iconpicker.search")}
+        bind:value={search} />
 
       {#if isClipart}
         {#if loading}<p class="credit" role="status">{$tr("editor.iconpicker.loading")}</p>{/if}
         <div class="icons">
           {#each clipartHits as item (item.id)}
-            <button type="button" class="glyph" class:botanical={source === "botanical"} data-clipart={item.id} title={item.id} onclick={() => onClipart(item.svg, item.id)}>
+            <button
+              type="button"
+              class="glyph"
+              class:botanical={source === "botanical"}
+              class:ornament={source === "ornaments"}
+              data-clipart={item.id}
+              title={"name" in item ? String(item.name) : item.id}
+              onclick={() => onClipart(item.svg, item.id)}>
               <img alt="" src={svgUrl(item.svg)} />
             </button>
           {/each}
         </div>
-        {#if source === "botanical"}
+        {#if source === "ornaments"}
+          <p class="credit">{$tr("editor.iconpicker.ornaments_credit")}</p>
+          <p class="credit">{$tr("editor.iconpicker.ornaments_hint")}</p>
+        {:else if source === "botanical"}
           <p class="credit">{$tr("editor.iconpicker.botanical_credit")}</p>
         {:else if source === "clipart"}
           <p class="credit" title={PHOSPHOR_NOTICE}>{$tr("editor.iconpicker.credit")}</p>
         {:else if source === "tabler"}
-          <a class="credit" href="https://github.com/tabler/tabler-icons" target="_blank" rel="noreferrer">Tabler Icons · MIT</a>
+          <a class="credit" href="https://github.com/tabler/tabler-icons" target="_blank" rel="noreferrer"
+            >Tabler Icons · MIT</a>
         {:else}
           <a class="credit" href="https://healthicons.org/about" target="_blank" rel="noreferrer">Health Icons · CC0</a>
         {/if}
@@ -241,7 +282,16 @@
     border-radius: 6px;
     color: var(--nb-text);
   }
-  .glyph.botanical { width: 3.5rem; height: 4.25rem; padding: .3rem; }
+  .glyph.botanical {
+    width: 3.5rem;
+    height: 4.25rem;
+    padding: 0.3rem;
+  }
+  .glyph.ornament {
+    width: 5.5rem;
+    height: 3.5rem;
+    padding: 0.35rem;
+  }
   .glyph:hover {
     background: var(--nb-accent-soft);
   }

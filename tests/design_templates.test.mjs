@@ -25,16 +25,17 @@ fabric.setEnv({ ...fabric.getEnv(), window: dom.window, document: dom.window.doc
 const { configureFabric } = await import("../src/defaults.ts");
 configureFabric();
 const { DESIGN_TEMPLATES, DESIGN_FORMATS, designScene, currentDesignFormat } = await import("../src/data/design_templates.ts");
+const { DECORATIVE_ORNAMENTS } = await import("../src/data/decorative_ornaments.ts");
 const { BOTANICAL_ORNAMENTS } = await import("../src/data/botanical_ornaments.ts");
 const { designPreviewSvg } = await import("../src/utils/design_template_preview.ts");
 const { createDesignTemplate } = await import("../src/utils/design_template_factory.ts");
 const { ExportedLabelTemplateSchema } = await import("../src/types.ts");
 
 test("all design collections compose within each stock format in both languages", () => {
-  assert.equal(DESIGN_TEMPLATES.length, 25);
-  assert.equal(new Set(DESIGN_TEMPLATES.map((item) => item.id)).size, 25);
-  assert.equal(DESIGN_TEMPLATES.filter((item) => item.collection === "botanical").length, 6);
-  assert.equal(DESIGN_TEMPLATES.filter((item) => item.collection === "vintage").length, 4);
+  assert.equal(DESIGN_TEMPLATES.length, 35);
+  assert.equal(new Set(DESIGN_TEMPLATES.map((item) => item.id)).size, 35);
+  assert.equal(DESIGN_TEMPLATES.filter((item) => item.collection === "botanical").length, 10);
+  assert.equal(DESIGN_TEMPLATES.filter((item) => item.collection === "vintage").length, 10);
   assert.equal(DESIGN_TEMPLATES.filter((item) => item.collection === "artdeco").length, 7);
   assert.equal(DESIGN_TEMPLATES.filter((item) => item.collection === "cyber").length, 8);
   for (const design of DESIGN_TEMPLATES) for (const format of DESIGN_FORMATS) for (const language of ["en", "de"]) {
@@ -52,18 +53,22 @@ test("all design collections compose within each stock format in both languages"
 });
 
 test("ornaments are self-contained SVG with in-bounds artwork", async () => {
-  assert.equal(BOTANICAL_ORNAMENTS.length, 7);
-  for (const item of BOTANICAL_ORNAMENTS) {
+  assert.equal(BOTANICAL_ORNAMENTS.length, 17);
+  assert.equal(DECORATIVE_ORNAMENTS.length, 14);
+  const ornaments = [...BOTANICAL_ORNAMENTS, ...DECORATIVE_ORNAMENTS];
+  assert.equal(new Set(ornaments.map((item) => item.id)).size, ornaments.length);
+  for (const item of ornaments) {
     const parsed = new dom.window.DOMParser().parseFromString(item.svg, "image/svg+xml");
     assert.equal(parsed.querySelector("parsererror"), null);
     assert.equal(parsed.querySelector("use, image, script, foreignObject"), null);
     assert.ok(parsed.querySelector("path"));
-    if (["rosemary-sprig", "citrus-branch"].includes(item.id)) {
+    {
+      const [, , width, height] = item.viewBox.split(/\s+/).map(Number);
       const artwork = await fabric.loadSVGFromString(item.svg);
       for (const object of artwork.objects.filter(Boolean)) {
         const box = object.getBoundingRect();
         assert.ok(box.left >= 0 && box.top >= 0, item.id);
-        assert.ok(box.left + box.width <= 124 && box.top + box.height <= 160, item.id);
+        assert.ok(box.left + box.width <= width && box.top + box.height <= height, item.id);
       }
     }
   }
@@ -124,7 +129,7 @@ test("new botanical frames keep painted paths inside all three label shapes", as
 test("vintage frames stay inside paper and preserve blank centres across aspect ratios", async () => {
   const { VINTAGE_FRAME_KINDS, vintageFrameSvg } = await import("../src/utils/vintage_frames.ts");
   const { borderSvg, BORDER_KINDS } = await import("../src/utils/label_borders.ts");
-  assert.equal(VINTAGE_FRAME_KINDS.length, 6);
+  assert.equal(VINTAGE_FRAME_KINDS.length, 12);
   for (const kind of VINTAGE_FRAME_KINDS) {
     assert.ok(BORDER_KINDS.includes(kind));
     for (const [width, height, shape] of [[591,354,"rect"], [472,709,"rect"], [591,354,"rounded_rect"], [472,472,"circle"]]) {

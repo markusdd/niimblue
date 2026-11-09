@@ -4,7 +4,6 @@
   import { appConfig } from "$/stores";
   import ObjectPositionControls from "$/components/designer-controls/ObjectPositionControls.svelte";
 
-
   interface Props {
     selectedObject: fabric.FabricObject;
     editRevision: number;
@@ -20,6 +19,18 @@
 
   const putToCenterH = () => {
     selectedObject.canvas!.centerObjectH(selectedObject);
+    valueUpdated();
+  };
+
+  const flip = (axis: "flipX" | "flipY") => {
+    selectedObject.set(axis, !selectedObject[axis]);
+    selectedObject.setCoords();
+    valueUpdated();
+  };
+
+  const rotateRight = () => {
+    selectedObject.rotate((selectedObject.angle + 90) % 360);
+    selectedObject.setCoords();
     valueUpdated();
   };
 
@@ -66,7 +77,7 @@
   };
 </script>
 
-<input type="hidden" value={editRevision}>
+<input type="hidden" value={editRevision} />
 
 <div class="choice-row">
   <button class="btn btn-sm btn-outline-secondary" type="button" onclick={putToCenterV}>
@@ -80,6 +91,18 @@
   </button>
   <button class="btn btn-sm btn-outline-secondary" type="button" onclick={() => bringTo("bottom")}>
     {$tr("params.generic.arrange.bottom")}
+  </button>
+</div>
+
+<div class="choice-row">
+  <button class="btn btn-sm btn-outline-secondary" type="button" onclick={() => flip("flipX")}>
+    {$tr("params.generic.flip.horizontal")}
+  </button>
+  <button class="btn btn-sm btn-outline-secondary" type="button" onclick={() => flip("flipY")}>
+    {$tr("params.generic.flip.vertical")}
+  </button>
+  <button class="btn btn-sm btn-outline-secondary" type="button" onclick={rotateRight}>
+    {$tr("params.generic.rotate_quarter")}
   </button>
 </div>
 

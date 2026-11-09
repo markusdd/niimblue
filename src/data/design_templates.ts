@@ -26,6 +26,16 @@ const BOTANICAL_DESIGNS = [
   },
   { id: "floral", collection: "botanical", ornament: "wildflower-spray", en: "Floral gift", de: "Blumengruß" },
   { id: "artisan", collection: "botanical", ornament: "rosemary-sprig", en: "Minimal artisan", de: "Handgemacht" },
+  { id: "fern-study", collection: "botanical", ornament: "fern-frond", en: "Fern study", de: "Farnstudie" },
+  {
+    id: "eucalyptus-note",
+    collection: "botanical",
+    ornament: "eucalyptus-stem",
+    en: "Eucalyptus note",
+    de: "Eukalyptusgruß",
+  },
+  { id: "berry-harvest", collection: "botanical", ornament: "berry-branch", en: "Berry harvest", de: "Beerenernte" },
+  { id: "poppy-field", collection: "botanical", ornament: "poppy-stem", en: "Poppy field", de: "Mohnwiese" },
 ] as const;
 export const DESIGN_TEMPLATES = [...BOTANICAL_DESIGNS, ...VINTAGE_DESIGNS, ...DECO_DESIGNS, ...CYBER_DESIGNS] as const;
 export type DesignId = (typeof DESIGN_TEMPLATES)[number]["id"];
@@ -163,7 +173,121 @@ const COPY = {
     en: ["SMALL BATCH", "Handmade", "Made with care", "CRAFTED WITH CARE"],
     de: ["KLEINE MANUFAKTUR", "Handgemacht", "Mit Liebe gemacht", "MIT SORGFALT GEFERTIGT"],
   },
+  "fern-study": {
+    en: ["FIELD NOTES · 04", "Fern & Moss", "Collected in the woodland", "BOTANICAL STUDY"],
+    de: ["FELDNOTIZEN · 04", "Farn & Moos", "Im Wald gesammelt", "BOTANISCHE STUDIE"],
+  },
+  "eucalyptus-note": {
+    en: ["A QUIET MOMENT", "Eucalyptus", "Fresh leaves, slow living", "GARDEN · HOME · CALM"],
+    de: ["EIN STILLER MOMENT", "Eukalyptus", "Frische Blätter, Ruhe finden", "GARTEN · HAUS · RUHE"],
+  },
+  "berry-harvest": {
+    en: ["LATE SUMMER · No. 8", "Wild Berries", "Picked along the hedgerow", "SMALL GARDEN HARVEST"],
+    de: ["SPÄTSOMMER · Nr. 8", "Wilde Beeren", "Von der Hecke gepflückt", "KLEINE GARTENERNTE"],
+  },
+  "poppy-field": {
+    en: ["MEADOW FLOWERS", "Poppy Seed", "Gathered beneath open skies", "SEED · FLOWER · FIELD"],
+    de: ["WIESENBLUMEN", "Mohnsamen", "Unter freiem Himmel gesammelt", "SAMEN · BLÜTE · FELD"],
+  },
 } as const;
+
+const editableText = (
+  value: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  size: number,
+  family: BundledFontFamily,
+  italic = false,
+  spacing = 0,
+): DesignElement => ({ kind: "text", text: value, x, y, width, height, size, family, italic, spacing });
+
+/** New herbarium compositions use offset sprigs and leave a deliberate text field. */
+function asymmetricBotanicalScene(
+  id: (typeof BOTANICAL_DESIGNS)[number]["id"],
+  ornamentId: string,
+  copy: readonly [string, string, string, string],
+  format: DesignFormat,
+): DesignScene {
+  const { width: w, height: h, shape } = format;
+  const round = shape === "circle";
+  const portrait = !round && h > w * 1.15;
+  const unit = Math.min(w, h);
+  const elements: DesignElement[] = [];
+  const [eyebrow, title, subtitle, footer] = copy;
+  if (round) {
+    elements.push(outline(w, h, shape));
+    // The paired placements deliberately cross the diagonal instead of forming a symmetrical wreath.
+    elements.push(
+      ornament(
+        id === "fern-study" ? "fern-corner" : ornamentId,
+        w * 0.16,
+        h * 0.16,
+        w * 0.17,
+        h * 0.2,
+        id !== "eucalyptus-note",
+      ),
+    );
+    elements.push(
+      ornament(id === "poppy-field" ? "cosmos-stem" : ornamentId, w * 0.65, h * 0.64, w * 0.17, h * 0.2, true, true),
+    );
+    elements.push(
+      editableText(eyebrow, w * 0.33, h * 0.215, w * 0.44, h * 0.07, unit * 0.039, "NiimBlue Condensed", false, 75),
+    );
+    elements.push(editableText(title, w * 0.16, h * 0.375, w * 0.68, h * 0.145, unit * 0.1, "NiimBlue Serif", true));
+    elements.push(
+      editableText(subtitle, w * 0.21, h * 0.535, w * 0.58, h * 0.095, unit * 0.044, "NiimBlue Serif", true),
+    );
+    elements.push(line(w * 0.38, h * 0.68, w * 0.24));
+    elements.push(
+      editableText(footer, w * 0.2, h * 0.78, w * 0.44, h * 0.065, unit * 0.032, "NiimBlue Condensed", false, 35),
+    );
+  } else if (portrait) {
+    // A small upper corner and low opposite sprig frame a tall, open copy column.
+    elements.push(
+      ornament(
+        id === "poppy-field" ? "asymmetric-side-spray" : ornamentId,
+        w * 0.64,
+        h * 0.055,
+        w * 0.3,
+        h * 0.235,
+        id !== "berry-harvest",
+      ),
+    );
+    elements.push(
+      ornament(id === "fern-study" ? "seedhead-grass" : ornamentId, w * 0.02, h * 0.73, w * 0.18, h * 0.2, true, true),
+    );
+    elements.push(
+      editableText(eyebrow, w * 0.15, h * 0.335, w * 0.7, h * 0.06, unit * 0.039, "NiimBlue Condensed", false, 75),
+    );
+    elements.push(editableText(title, w * 0.12, h * 0.435, w * 0.76, h * 0.14, unit * 0.11, "NiimBlue Serif", true));
+    elements.push(editableText(subtitle, w * 0.16, h * 0.595, w * 0.68, h * 0.1, unit * 0.049, "NiimBlue Serif", true));
+    elements.push(line(w * 0.31, h * 0.745, w * 0.38));
+    elements.push(
+      editableText(footer, w * 0.2, h * 0.82, w * 0.6, h * 0.06, unit * 0.034, "NiimBlue Condensed", false, 35),
+    );
+  } else {
+    // Landscape copy sits to the left of one tall, offset illustration.
+    const artOnLeft = id === "berry-harvest" || id === "poppy-field";
+    const artX = artOnLeft ? w * 0.035 : w * 0.78;
+    const textX = artOnLeft ? w * 0.3 : w * 0.09;
+    const textW = w * 0.64;
+    elements.push(
+      ornament(ornamentId, artX, h * 0.07, w * 0.19, h * 0.84, artOnLeft),
+    );
+    elements.push(
+      editableText(eyebrow, textX, h * 0.13, textW, h * 0.09, unit * 0.045, "NiimBlue Condensed", false, 80),
+    );
+    elements.push(editableText(title, textX, h * 0.29, textW, h * 0.2, unit * 0.125, "NiimBlue Serif", true));
+    elements.push(editableText(subtitle, textX, h * 0.545, textW, h * 0.1, unit * 0.052, "NiimBlue Serif", true));
+    elements.push(line(textX + textW * 0.2, h * 0.715, textW * 0.6));
+    elements.push(
+      editableText(footer, textX, h * 0.81, textW, h * 0.075, unit * 0.037, "NiimBlue Condensed", false, 45),
+    );
+  }
+  return { width: w, height: h, shape, elements };
+}
 
 /** Explicit compositions for each aspect; illustration proportions never stretch. */
 export function designScene(id: DesignId, format: DesignFormat, language: DesignLanguage = "en"): DesignScene {
@@ -173,6 +297,8 @@ export function designScene(id: DesignId, format: DesignFormat, language: Design
   const { width: w, height: h, shape } = format;
   const info = BOTANICAL_DESIGNS.find((item) => item.id === id)!;
   const [eyebrow, title, subtitle, footer] = COPY[id][language];
+  if (id === "fern-study" || id === "eucalyptus-note" || id === "berry-harvest" || id === "poppy-field")
+    return asymmetricBotanicalScene(id, info.ornament, [eyebrow, title, subtitle, footer], format);
   const elements: DesignElement[] = [];
   const round = shape === "circle";
   const portrait = !round && h > w * 1.15;
