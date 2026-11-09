@@ -67,6 +67,18 @@ If linuxdeploy still fails, use `--verbose` to see the
 underlying tool error. For local testing you can also run
 `standalone-apps/desktop/src-tauri/target/release/niimblues` directly.
 
+On Linux, AppImage startup prefers X11/XWayland when `DISPLAY` is available,
+with Wayland as a fallback. This works around bundled GTK's Wayland shared-memory
+surface failures on some HiDPI desktops. Native Wayland remains the default on
+Wayland-only sessions; an explicit `GDK_BACKEND` is always respected.
+For an older AppImage that fails with `Truncating shared memory file failed`, try:
+
+```sh
+GDK_BACKEND=x11 ./NiimBlue_1.0.0_amd64.AppImage
+```
+
+To explicitly test native Wayland, launch with `GDK_BACKEND=wayland` instead.
+
 Build Windows installers on Windows. Linux testing verifies the shared protocol
 and Linux Bluetooth path, but the Windows backend still needs a real printer test.
 macOS builds include Bluetooth usage descriptions; build/test on macOS separately.

@@ -1,6 +1,8 @@
 mod ble_policy;
 mod bluetooth;
 mod fonts;
+#[cfg(target_os = "linux")]
+mod linux_startup;
 #[cfg(target_os = "windows")]
 mod windows_runtime;
 
@@ -8,6 +10,9 @@ use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(target_os = "linux")]
+    linux_startup::configure();
+
     #[cfg(target_os = "windows")]
     if !windows_runtime::ensure_available() {
         return;
