@@ -1,7 +1,7 @@
 import * as fabric from "fabric";
 import { isBlackInk } from "$/utils/label_colors";
 
-type PaintTouch = { obj: fabric.FabricObject; fill?: string; stroke?: string };
+type PaintTouch = { obj: fabric.FabricObject; fill?: string; stroke?: string; backgroundColor?: string };
 
 const isWhitePaint = (value: unknown): value is string => {
   if (typeof value !== "string") return false;
@@ -39,6 +39,11 @@ export const withPreviewPaint = (
       }
     }
     const touch: PaintTouch = { obj };
+    if (isWhitePaint(obj.backgroundColor)) {
+      touch.backgroundColor = obj.backgroundColor;
+      obj.backgroundColor = paper;
+      changed = true;
+    }
     if (isWhitePaint(obj.fill)) {
       touch.fill = obj.fill;
       obj.fill = paper;
@@ -59,7 +64,8 @@ export const withPreviewPaint = (
     }
     if (changed) {
       obj.dirty = true;
-      if (touch.fill !== undefined || touch.stroke !== undefined) touched.push(touch);
+      if (touch.fill !== undefined || touch.stroke !== undefined || touch.backgroundColor !== undefined)
+        touched.push(touch);
     }
     return changed;
   };
@@ -68,6 +74,7 @@ export const withPreviewPaint = (
     for (const touch of touched) {
       if (touch.fill !== undefined) touch.obj.fill = touch.fill;
       if (touch.stroke !== undefined) touch.obj.stroke = touch.stroke;
+      if (touch.backgroundColor !== undefined) touch.obj.backgroundColor = touch.backgroundColor;
       touch.obj.dirty = true;
       const parent = touch.obj.group ?? touch.obj.parent;
       if (parent) parent.dirty = true;

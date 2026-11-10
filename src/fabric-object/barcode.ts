@@ -13,6 +13,8 @@ export const barcodeDefaultValues: Partial<fabric.TClassProperties<Barcode>> = {
   scaleFactor: 1,
   fontSize: 12,
   fontFamily: OBJECT_DEFAULTS_TEXT.fontFamily,
+  fill: "#000000",
+  backgroundColor: "#ffffff",
 };
 
 interface UniqueBarcodeProps {
@@ -84,6 +86,9 @@ export class Barcode<
     Object.assign(this, barcodeDefaultValues);
     const { text, ...other } = options ?? {};
     this.setOptions(other); // Must be set separately because the encoding needs to be set first
+    // Older saved barcodes have an empty background. Give their spaces/caption
+    // a paper backing too, rather than letting underlying artwork show through.
+    if (!this.backgroundColor) this.backgroundColor = "#ffffff";
     this.set("text", text);
     this.setControlsVisibility({
       tl: false,
@@ -174,6 +179,7 @@ export class Barcode<
 
     ctx.font = this._getFont();
     ctx.textBaseline = "bottom";
+    this._setFillStyles(ctx, this);
 
     const longBarHeight = this.height;
     let shortBarHeight = this.height;

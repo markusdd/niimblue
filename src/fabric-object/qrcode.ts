@@ -1,7 +1,7 @@
 import QRCodeFactory from "qrcode-generator";
 import * as fabric from "fabric";
 import { OBJECT_SIZE_DEFAULTS } from "$/defaults";
-import { Range } from "$/types";
+import type { Range } from "$/types";
 import { stringToBytes } from "$/utils/qrcode";
 import { CanvasUtils } from "$/utils/canvas_utils";
 
@@ -119,7 +119,16 @@ export class QRCode<
     ctx.save();
     ctx.translate(-qrWidth / 2, -qrWidth / 2); // make top-left origin
     ctx.translate(-0.5, -0.5); // blurry rendering fix
-    qr.renderTo2dContext(ctx, qrScale);
+    // Use Fabric paints so the editor can temporarily apply paper/ribbon colours.
+    // The print bitmap still uses the original white fill and black stroke.
+    this._setFillStyles(ctx, this);
+    ctx.fillRect(0, 0, qrScale * qr.getModuleCount(), qrScale * qr.getModuleCount());
+    this._setFillStyles(ctx, { fill: this.stroke || "#000000" });
+    for (let row = 0; row < qr.getModuleCount(); row++) {
+      for (let col = 0; col < qr.getModuleCount(); col++) {
+        if (qr.isDark(row, col)) ctx.fillRect(col * qrScale, row * qrScale, qrScale, qrScale);
+      }
+    }
     ctx.restore();
 
     super._render(ctx);
