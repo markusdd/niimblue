@@ -1,6 +1,7 @@
 import * as fabric from "fabric";
 import ArUcoMarker from "$/fabric-object/aruco";
 import Barcode from "$/fabric-object/barcode";
+import MatrixCode from "$/fabric-object/matrixcode";
 import QRCode from "$/fabric-object/qrcode";
 import { OBJECT_DEFAULTS_TEXT } from "$/defaults";
 
@@ -34,7 +35,12 @@ export class CanvasUtils {
   }
 
   static fixFabricObjectScale(obj: fabric.FabricObject) {
-    const isNotScalable = obj instanceof Barcode || obj instanceof fabric.Rect || obj instanceof QRCode || obj instanceof ArUcoMarker;
+    const isNotScalable =
+      obj instanceof Barcode ||
+      obj instanceof fabric.Rect ||
+      obj instanceof QRCode ||
+      obj instanceof MatrixCode ||
+      obj instanceof ArUcoMarker;
 
     if (isNotScalable) {
       obj.set({
@@ -46,7 +52,7 @@ export class CanvasUtils {
         top: Math.round(obj.top),
       });
 
-      if (obj instanceof QRCode || obj instanceof ArUcoMarker) {
+      if (obj instanceof QRCode || obj instanceof MatrixCode || obj instanceof ArUcoMarker) {
         const qrMin = 42;
         const size = Math.max(obj.width + (obj.width % 2), qrMin);
         obj.set({
@@ -74,18 +80,18 @@ export class CanvasUtils {
   }
 
   static renderError(ctx: CanvasRenderingContext2D, width: number, height: number): void {
-      ctx.save();
-      ctx.fillStyle = "black";
-      ctx.translate(-width / 2, -height / 2); // make top-left origin
-      ctx.translate(-0.5, -0.5); // blurry rendering fix
-      ctx.fillRect(0, 0, width + 1, height + 1);
-      ctx.restore();
-      
-      ctx.save();
-      ctx.fillStyle = "white";
-      ctx.textAlign = "center";
-      ctx.font = `16px ${OBJECT_DEFAULTS_TEXT.fontFamily}`;
-      ctx.fillText("ERR", 0, 0);
-      ctx.restore();
-    }
+    ctx.save();
+    ctx.fillStyle = "black";
+    ctx.translate(-width / 2, -height / 2); // make top-left origin
+    ctx.translate(-0.5, -0.5); // blurry rendering fix
+    ctx.fillRect(0, 0, width + 1, height + 1);
+    ctx.restore();
+
+    ctx.save();
+    ctx.fillStyle = "white";
+    ctx.textAlign = "center";
+    ctx.font = `16px ${OBJECT_DEFAULTS_TEXT.fontFamily}`;
+    ctx.fillText("ERR", 0, 0);
+    ctx.restore();
+  }
 }

@@ -2,6 +2,7 @@ import * as fabric from "fabric";
 import { OBJECT_DEFAULTS, OBJECT_DEFAULTS_TEXT, OBJECT_DEFAULTS_VECTOR, OBJECT_SIZE_DEFAULTS } from "$/defaults";
 import { ArUcoMarker } from "$/fabric-object/aruco";
 import Barcode from "$/fabric-object/barcode";
+import { MatrixCode } from "$/fabric-object/matrixcode";
 import { QRCode } from "$/fabric-object/qrcode";
 import type { OjectType } from "$/types";
 import { Toasts } from "$/utils/toasts";
@@ -14,7 +15,9 @@ import { nameLayer, type LayerInfo } from "$/utils/layer_metadata";
 type SvgBox = { left: number; top: number; width: number; height: number };
 
 export class LabelDesignerObjectHelper {
-  private static async loadSvg(svgCode: string): Promise<{ obj: fabric.FabricObject; viewWidth: number; viewHeight: number }> {
+  private static async loadSvg(
+    svgCode: string,
+  ): Promise<{ obj: fabric.FabricObject; viewWidth: number; viewHeight: number }> {
     const { objects, options } = await fabric.loadSVGFromString(svgCode);
     const parts = objects.filter((object): object is fabric.FabricObject => object !== null);
     if (parts.length === 0) {
@@ -60,7 +63,12 @@ export class LabelDesignerObjectHelper {
   }
 
   /** Place an SVG into a fixed paper box. Used for frames, which must not be shrunk to fit their stroke. */
-  static async placeSvg(canvas: fabric.Canvas, svgCode: string, box: SvgBox, frameName?: string): Promise<fabric.FabricObject> {
+  static async placeSvg(
+    canvas: fabric.Canvas,
+    svgCode: string,
+    box: SvgBox,
+    frameName?: string,
+  ): Promise<fabric.FabricObject> {
     const { obj, viewWidth, viewHeight } = await this.loadSvg(svgCode);
     nameLayer(obj, { kind: "frame", name: frameName });
     // Scale by the SVG view size, then shift by whatever empty margin Fabric
@@ -90,7 +98,12 @@ export class LabelDesignerObjectHelper {
       return await this.addSvg(canvas, data, { layerInfo: { kind: "image", name: file.name } });
     }
 
-    if (file.type === "image/png" || file.type === "image/jpeg" || file.type === "image/bmp" || file.type === "image/gif") {
+    if (
+      file.type === "image/png" ||
+      file.type === "image/jpeg" ||
+      file.type === "image/bmp" ||
+      file.type === "image/gif"
+    ) {
       const url = await FileUtils.blobToDataUrl(file);
       const fabricImg = await fabric.FabricImage.fromURL(url);
       nameLayer(fabricImg, { kind: "image", name: file.name });
@@ -211,6 +224,12 @@ export class LabelDesignerObjectHelper {
     return qr;
   }
 
+  static addMatrixCode(canvas: fabric.Canvas): MatrixCode {
+    const code = new MatrixCode({ ...OBJECT_DEFAULTS, text: "NiimBlue", encoding: "DATAMATRIX" });
+    canvas.add(code);
+    return code;
+  }
+
   static addArUco(canvas: fabric.Canvas): ArUcoMarker {
     const aruco = new ArUcoMarker({
       ...OBJECT_SIZE_DEFAULTS,
@@ -246,6 +265,8 @@ export class LabelDesignerObjectHelper {
         return;
       case "qrcode":
         return this.addQrCode(canvas);
+      case "matrixcode":
+        return this.addMatrixCode(canvas);
       case "aruco":
         return this.addArUco(canvas);
       case "barcode":

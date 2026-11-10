@@ -9,9 +9,13 @@
   }
 
   let { selectedBarcode, editRevision, valueUpdated }: Props = $props();
+  let encodingError = $derived.by(() => {
+    void editRevision;
+    return selectedBarcode.getEncodingError?.();
+  });
 </script>
 
-<input type="hidden" value={editRevision}>
+<input type="hidden" value={editRevision} />
 
 <div class="field">
   <label class="field-label" for="barcode-encoding">{$tr("params.barcode.encoding")}</label>
@@ -25,8 +29,14 @@
     }}>
     <option value="EAN13">EAN13</option>
     <option value="CODE128B">Code128 B</option>
+    <option value="CODE128">Code128 (auto)</option>
+    <option value="CODE39">Code39</option>
   </select>
 </div>
+
+{#if encodingError}
+  <p class="invalid-feedback d-block">{encodingError}</p>
+{/if}
 
 <div class="field">
   <label class="field-label" for="barcode-scale">{$tr("params.barcode.scale")}</label>

@@ -2,9 +2,11 @@ import * as fabric from "fabric";
 import { code128b, ean13 } from "$/utils/barcode";
 import { CanvasUtils } from "$/utils/canvas_utils";
 import { OBJECT_DEFAULTS_TEXT } from "$/defaults";
+import { encodeCode, drawCodeGeometry, type CodeGeometry } from "$/utils/code_encoder";
 
 const EAN13_LONG_BAR_INDEXES: Set<number> = new Set([0, 1, 2, 45, 46, 47, 48, 49, 92, 93, 94]);
-export type BarcodeCoding = "EAN13" | "CODE128B";
+export type BarcodeCoding = "EAN13" | "CODE128B" | "CODE128" | "CODE39";
+const QUIET_MODULES = 10;
 
 export const barcodeDefaultValues: Partial<fabric.TClassProperties<Barcode>> = {
   text: "",
@@ -30,10 +32,10 @@ export interface SerializedBarcodeProps extends fabric.SerializedObjectProps, Un
 const BARCODE_PROPS = ["text", "encoding", "printText", "scaleFactor", "fontSize", "fontFamily"] as const;
 
 export class Barcode<
-    Props extends fabric.TOptions<BarcodeProps> = Partial<BarcodeProps>,
-    SProps extends SerializedBarcodeProps = SerializedBarcodeProps,
-    EventSpec extends fabric.ObjectEvents = fabric.ObjectEvents,
-  >
+  Props extends fabric.TOptions<BarcodeProps> = Partial<BarcodeProps>,
+  SProps extends SerializedBarcodeProps = SerializedBarcodeProps,
+  EventSpec extends fabric.ObjectEvents = fabric.ObjectEvents,
+>
   extends fabric.FabricObject<Props, SProps, EventSpec>
   implements BarcodeProps
 {
@@ -80,6 +82,8 @@ export class Barcode<
   private displayText: string = "";
 
   private error: boolean = false;
+  private encodingError?: string;
+  private librarySymbol?: CodeGeometry;
 
   constructor(options?: Props) {
     super();
@@ -120,25 +124,68 @@ export class Barcode<
       super.set("width", barcodeWidth);
       this.setCoords();
     }
+    if (this.librarySymbol && (BARCODE_PROPS.includes(key as any) || key === "canvas")) {
+      super.set("width", (this.librarySymbol.width + QUIET_MODULES * 2) * this.moduleScale());
+      this.setCoords();
+    }
 
     return this;
   }
 
   _createBandCode() {
+    this.barcodeEncoded = "";
+    this.librarySymbol = undefined;
+    this.encodingError = undefined;
     try {
       this.error = false;
       if (this.encoding === "EAN13") {
         const { text, bandcode } = ean13(this.text);
         this.displayText = text;
         this.barcodeEncoded = bandcode;
-      } else {
+      } else if (this.encoding === "CODE128B") {
         this.displayText = this.text;
         this.barcodeEncoded = code128b(this.text);
+      } else if (this.encoding === "CODE128" || this.encoding === "CODE39") {
+        this.displayText = this.text;
+        this.librarySymbol = encodeCode(this.encoding, this.text);
+      } else {
+        throw new Error("Unsupported barcode encoding.");
       }
     } catch (e) {
-      console.error(e);
       this.error = true;
+      this.encodingError = e instanceof Error ? e.message : String(e);
     }
+  }
+
+  getEncodingError(): string | undefined {
+    return this.encodingError;
+  }
+
+  private moduleScale(): number {
+    return Number.isFinite(this.scaleFactor) ? Math.max(1, Math.round(this.scaleFactor)) : 1;
+  }
+
+  private renderLibrarySymbol(ctx: CanvasRenderingContext2D, symbol: CodeGeometry): void {
+    const scale = this.moduleScale();
+    const barHeight = this.height - (this.printText ? this.fontSize * 1.2 : 0);
+    if (barHeight < 1) {
+      CanvasUtils.renderError(ctx, this.width, this.height);
+      return;
+    }
+    ctx.save();
+    ctx.translate(-this.width / 2, -this.height / 2);
+    this._setFillStyles(ctx, this);
+    ctx.save();
+    ctx.translate(QUIET_MODULES * scale, 0);
+    ctx.scale(scale, barHeight / symbol.height);
+    drawCodeGeometry(ctx, symbol);
+    ctx.restore();
+    if (this.printText) {
+      ctx.font = this._getFont();
+      ctx.textBaseline = "bottom";
+      CanvasUtils.equalSpacingFillText(ctx, this.displayText, QUIET_MODULES * scale, this.height, symbol.width * scale);
+    }
+    ctx.restore();
   }
 
   _getFont(): string {
@@ -163,6 +210,11 @@ export class Barcode<
     if (this.error) {
       CanvasUtils.renderError(ctx, this.width, this.height);
       super._render(ctx);
+      return;
+    }
+
+    if (this.librarySymbol) {
+      this.renderLibrarySymbol(ctx, this.librarySymbol);
       return;
     }
 

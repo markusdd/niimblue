@@ -12,6 +12,7 @@
   import { ArUcoMarker } from "$/fabric-object/aruco";
   import { Barcode } from "$/fabric-object/barcode";
   import { QRCode } from "$/fabric-object/qrcode";
+  import { MatrixCode } from "$/fabric-object/matrixcode";
   import { BORDER_KINDS, type BorderKind } from "$/utils/label_borders";
   import { isFrameGroup } from "$/fabric-object/scale_mode";
   import { readableLayerDetail, type NamedLayer } from "$/utils/layer_metadata";
@@ -68,6 +69,7 @@
     { type: "image", icon: "image", label: "editor.objectpicker.image" },
     { type: "barcode", icon: "view_week", label: "editor.objectpicker.barcode" },
     { type: "qrcode", icon: "qr_code_2", label: "editor.objectpicker.qrcode" },
+    { type: "matrixcode", icon: "qr_code", label: "editor.objectpicker.matrixcode" },
     { type: "line", icon: "horizontal_rule", label: "editor.objectpicker.line" },
     { type: "rectangle", icon: "crop_square", label: "editor.objectpicker.rectangle" },
     { type: "circle", icon: "radio_button_unchecked", label: "editor.objectpicker.circle" },
@@ -76,10 +78,11 @@
 
   const layerName = (obj: fabric.FabricObject): string => {
     const info = (obj as NamedLayer).layerInfo;
-    const detail = (label: string, name?: string) => name ? `${label} · ${readableLayerDetail(name)}` : label;
+    const detail = (label: string, name?: string) => (name ? `${label} · ${readableLayerDetail(name)}` : label);
     if (info?.kind === "frame") {
       const name = BORDER_KINDS.includes(info.name as BorderKind)
-        ? $tr(`editor.frames.${info.name}` as TranslationKey) : info.name;
+        ? $tr(`editor.frames.${info.name}` as TranslationKey)
+        : info.name;
       return detail($tr("shell.layer.frame"), name);
     }
     if (info?.kind === "clipart") return detail($tr("editor.iconpicker.source.clipart"), info.name);
@@ -89,6 +92,11 @@
     if (isFrameGroup(obj)) return $tr("shell.layer.frame");
     if (obj instanceof QRCode) {
       return detail($tr("editor.objectpicker.qrcode"), obj.text);
+    }
+    if (obj instanceof MatrixCode) {
+      const encoding =
+        obj.encoding === "DATAMATRIX" ? $tr("params.matrixcode.datamatrix") : $tr("params.matrixcode.aztec");
+      return detail(encoding, obj.text);
     }
     if (obj instanceof Barcode) {
       return detail($tr("editor.objectpicker.barcode"), obj.text);
@@ -133,6 +141,7 @@
     if (kind === "icon" || kind === "clipart") return "emoji_emotions";
     if (kind === "image" || kind === "illustration") return "image";
     if (obj instanceof QRCode) return "qr_code_2";
+    if (obj instanceof MatrixCode) return "qr_code";
     if (obj instanceof Barcode) return "view_week";
     if (obj instanceof ArUcoMarker) return "grid_on";
     if (obj instanceof fabric.FabricImage) return "image";
@@ -197,11 +206,7 @@
 
 {#if iconOpen}
   <div class="icon-browser">
-    <IconPicker
-      embedded
-      onSubmit={onIcon}
-      onSubmitSvg={onSvgIcon}
-      {onClipart} />
+    <IconPicker embedded onSubmit={onIcon} onSubmitSvg={onSvgIcon} {onClipart} />
   </div>
 {/if}
 

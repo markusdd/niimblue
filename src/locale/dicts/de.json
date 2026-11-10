@@ -1,4 +1,8 @@
 {
+    "editor.objectpicker.matrixcode": "2D-Code",
+    "params.matrixcode.encoding": "2D-Code-Typ",
+    "params.matrixcode.datamatrix": "Data Matrix",
+    "params.matrixcode.aztec": "Aztec",
     "lang.name": "Deutsch",
     "browser_warning.lines.first": "Oh nein, Dein Browser unterstützt kein Bluetooth und keine serielle Schnittstelle",
     "browser_warning.lines.second": "Du kannst trotzdem Etiketten erstellen.",

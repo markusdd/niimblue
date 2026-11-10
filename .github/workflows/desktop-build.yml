@@ -44,6 +44,7 @@ jobs:
       - run: node tests/design_templates.test.mjs
       - run: node tests/bundled_fonts.test.mjs
       - run: node tests/custom_canvas_preview_paint.test.mjs
+      - run: node tests/code_formats.test.mjs
       - run: npm run sv-check
       - name: Check Windows runtime setup script syntax
         if: runner.os == 'Windows'

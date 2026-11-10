@@ -5,8 +5,10 @@
   import { ArUcoMarker } from "$/fabric-object/aruco";
   import { Barcode } from "$/fabric-object/barcode";
   import { QRCode } from "$/fabric-object/qrcode";
+  import { MatrixCode } from "$/fabric-object/matrixcode";
   import ArUcoParamsPanel from "$/components/designer-controls/ArUcoParamsControls.svelte";
   import BarcodeParamsPanel from "$/components/designer-controls/BarcodeParamsControls.svelte";
+  import MatrixCodeParamsPanel from "$/components/designer-controls/MatrixCodeParamsControls.svelte";
   import GenericObjectParamsControls from "$/components/designer-controls/GenericObjectParamsControls.svelte";
   import LabelPropsEditor from "$/components/designer-controls/LabelPropsEditor.svelte";
   import QrCodeParamsPanel from "$/components/designer-controls/QRCodeParamsControls.svelte";
@@ -64,11 +66,7 @@
   <button class="inspector-tab" class:active={tab === "label"} type="button" onclick={() => (tab = "label")}>
     {$tr("shell.label")}
   </button>
-  <button
-    class="inspector-tab"
-    class:active={tab === "selection"}
-    type="button"
-    onclick={() => (tab = "selection")}>
+  <button class="inspector-tab" class:active={tab === "selection"} type="button" onclick={() => (tab = "selection")}>
     {$tr("shell.selection")}
   </button>
 </div>
@@ -122,6 +120,10 @@
       <QrCodeParamsPanel selectedQRCode={selectedObject} {editRevision} valueUpdated={onValueUpdated} />
     {/if}
 
+    {#if selectedObject instanceof MatrixCode}
+      <MatrixCodeParamsPanel selectedMatrixCode={selectedObject} {editRevision} valueUpdated={onValueUpdated} />
+    {/if}
+
     {#if selectedObject instanceof ArUcoMarker}
       <ArUcoParamsPanel selectedArUco={selectedObject} {editRevision} valueUpdated={onValueUpdated} />
     {/if}
@@ -130,7 +132,7 @@
       <BarcodeParamsPanel selectedBarcode={selectedObject} {editRevision} valueUpdated={onValueUpdated} />
     {/if}
 
-    {#if selectedObject instanceof fabric.IText || selectedObject instanceof QRCode || (selectedObject instanceof Barcode && selectedObject.encoding === "CODE128B")}
+    {#if selectedObject instanceof fabric.IText || selectedObject instanceof QRCode || selectedObject instanceof MatrixCode || (selectedObject instanceof Barcode && ["CODE128B", "CODE128", "CODE39"].includes(selectedObject.encoding))}
       <VariableInsertControl {selectedObject} valueUpdated={onValueUpdated} />
     {/if}
   {/if}

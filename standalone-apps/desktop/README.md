@@ -138,6 +138,7 @@ automatically; it does not add an extra technical setting to the print flow.
 node tests/native_bluetooth.test.mjs
 node tests/bluetooth_response.test.mjs
 node tests/system_fonts.test.mjs
+node tests/code_formats.test.mjs
 npm run sv-check
 cargo test --manifest-path standalone-apps/desktop/src-tauri/Cargo.toml
 ```

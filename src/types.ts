@@ -6,18 +6,30 @@ export type ConnectionState = "connecting" | "connected" | "disconnected";
 export type ConnectionType = "bluetooth" | "serial" | "capacitor-ble";
 
 export type LabelUnit = "mm" | "px";
-export type OjectType = "text" | "rectangle" | "line" | "circle" | "image" | "qrcode" | "barcode" | "aruco" | "pdf";
+export type OjectType =
+  | "text"
+  | "rectangle"
+  | "line"
+  | "circle"
+  | "image"
+  | "qrcode"
+  | "matrixcode"
+  | "barcode"
+  | "aruco"
+  | "pdf";
 export type MoveDirection = "up" | "down" | "left" | "right";
 export type LabelShape = "rect" | "rounded_rect" | "circle";
-export const LabelPanelSchema = z.object({
-  left: z.number().min(0).max(1),
-  top: z.number().min(0).max(1),
-  width: z.number().positive().max(1),
-  height: z.number().positive().max(1),
-  shape: z.enum(["rect", "rounded_rect", "circle"]).optional(),
-}).refine((panel) => panel.left + panel.width <= 1 && panel.top + panel.height <= 1, {
-  message: "Panel must fit inside the label",
-});
+export const LabelPanelSchema = z
+  .object({
+    left: z.number().min(0).max(1),
+    top: z.number().min(0).max(1),
+    width: z.number().positive().max(1),
+    height: z.number().positive().max(1),
+    shape: z.enum(["rect", "rounded_rect", "circle"]).optional(),
+  })
+  .refine((panel) => panel.left + panel.width <= 1 && panel.top + panel.height <= 1, {
+    message: "Panel must fit inside the label",
+  });
 export type LabelPanel = z.infer<typeof LabelPanelSchema>;
 export type LabelSplit = "none" | "vertical" | "horizontal";
 export type TailPosition = "right" | "bottom" | "left" | "top";
