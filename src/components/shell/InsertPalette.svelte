@@ -12,7 +12,7 @@
   import { ArUcoMarker } from "$/fabric-object/aruco";
   import { Barcode } from "$/fabric-object/barcode";
   import { QRCode } from "$/fabric-object/qrcode";
-  import { MatrixCode } from "$/fabric-object/matrixcode";
+  import { isMatrixCode } from "$/fabric-object/matrixcode";
   import { BORDER_KINDS, type BorderKind } from "$/utils/label_borders";
   import { isFrameGroup } from "$/fabric-object/scale_mode";
   import { readableLayerDetail, type NamedLayer } from "$/utils/layer_metadata";
@@ -68,7 +68,6 @@
     { type: "text", icon: "title", label: "editor.objectpicker.text" },
     { type: "image", icon: "image", label: "editor.objectpicker.image" },
     { type: "barcode", icon: "view_week", label: "editor.objectpicker.barcode" },
-    { type: "qrcode", icon: "qr_code_2", label: "editor.objectpicker.qrcode" },
     { type: "matrixcode", icon: "qr_code", label: "editor.objectpicker.matrixcode" },
     { type: "line", icon: "horizontal_rule", label: "editor.objectpicker.line" },
     { type: "rectangle", icon: "crop_square", label: "editor.objectpicker.rectangle" },
@@ -93,9 +92,19 @@
     if (obj instanceof QRCode) {
       return detail($tr("editor.objectpicker.qrcode"), obj.text);
     }
-    if (obj instanceof MatrixCode) {
+    if (isMatrixCode(obj)) {
       const encoding =
-        obj.encoding === "DATAMATRIX" ? $tr("params.matrixcode.datamatrix") : $tr("params.matrixcode.aztec");
+        obj.encoding === "QRCODE"
+          ? $tr("editor.objectpicker.qrcode")
+          : obj.encoding === "PDF417"
+            ? "PDF417"
+            : obj.encoding === "MICROQR"
+              ? "Micro QR"
+              : obj.encoding === "DATAMATRIX_RECT"
+                ? $tr("params.matrixcode.datamatrix_rect")
+                : obj.encoding === "DATAMATRIX"
+                  ? $tr("params.matrixcode.datamatrix")
+                  : $tr("params.matrixcode.aztec");
       return detail(encoding, obj.text);
     }
     if (obj instanceof Barcode) {
@@ -141,7 +150,7 @@
     if (kind === "icon" || kind === "clipart") return "emoji_emotions";
     if (kind === "image" || kind === "illustration") return "image";
     if (obj instanceof QRCode) return "qr_code_2";
-    if (obj instanceof MatrixCode) return "qr_code";
+    if (isMatrixCode(obj)) return "qr_code";
     if (obj instanceof Barcode) return "view_week";
     if (obj instanceof ArUcoMarker) return "grid_on";
     if (obj instanceof fabric.FabricImage) return "image";

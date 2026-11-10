@@ -1,7 +1,7 @@
 import * as fabric from "fabric";
 import ArUcoMarker from "$/fabric-object/aruco";
 import Barcode from "$/fabric-object/barcode";
-import MatrixCode from "$/fabric-object/matrixcode";
+import { isMatrixCode, isRectangularMatrixEncoding } from "$/fabric-object/matrixcode";
 import QRCode from "$/fabric-object/qrcode";
 import { OBJECT_DEFAULTS_TEXT } from "$/defaults";
 
@@ -39,7 +39,7 @@ export class CanvasUtils {
       obj instanceof Barcode ||
       obj instanceof fabric.Rect ||
       obj instanceof QRCode ||
-      obj instanceof MatrixCode ||
+      isMatrixCode(obj) ||
       obj instanceof ArUcoMarker;
 
     if (isNotScalable) {
@@ -52,8 +52,12 @@ export class CanvasUtils {
         top: Math.round(obj.top),
       });
 
-      if (obj instanceof QRCode || obj instanceof MatrixCode || obj instanceof ArUcoMarker) {
-        const qrMin = 42;
+      if (
+        obj instanceof QRCode ||
+        (isMatrixCode(obj) && !isRectangularMatrixEncoding(obj.encoding)) ||
+        obj instanceof ArUcoMarker
+      ) {
+        const qrMin = isMatrixCode(obj) && obj.encoding === "MICROQR" ? 15 : 42;
         const size = Math.max(obj.width + (obj.width % 2), qrMin);
         obj.set({
           width: size,

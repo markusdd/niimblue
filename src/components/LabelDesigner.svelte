@@ -27,6 +27,9 @@
   import SavedLabelsMenu from "$/components/designer-controls/SavedLabelsMenu.svelte";
   import { CustomCanvas } from "$/fabric-object/custom_canvas";
   import { CanvasUtils } from "$/utils/canvas_utils";
+  import type { MatrixEncoding } from "$/fabric-object/matrixcode";
+  import type { QRCode } from "$/fabric-object/qrcode";
+  import { convertLegacyQRCode } from "$/utils/code_2d";
   import { preventCollapsedSize } from "$/fabric-object/scale_mode";
   import DebugStuff from "$/components/DebugStuff.svelte";
   import PrinterConnector from "$/components/PrinterConnector.svelte";
@@ -440,6 +443,29 @@
 
     // trigger reactivity for controls
     editRevision++;
+  };
+
+  const onConvertQRCode = async (source: QRCode, encoding: MatrixEncoding) => {
+    try {
+      const canvas = fabricCanvas!;
+      const replacement = await convertLegacyQRCode(source, encoding);
+      const index = canvas.getObjects().indexOf(source);
+      if (index < 0 || canvas !== fabricCanvas) return;
+      const selected = canvas.getActiveObject() === source;
+      const wasPaused = undo.paused;
+      undo.paused = true;
+      try {
+        canvas.insertAt(index, replacement);
+        canvas.remove(source);
+        if (selected) canvas.setActiveObject(replacement);
+      } finally {
+        undo.paused = wasPaused;
+      }
+      controlValueUpdated();
+    } catch (error) {
+      Toasts.error(error);
+      editRevision++;
+    }
   };
 
   const capturePresetPreview = (): string | undefined => {
@@ -948,6 +974,7 @@
         {editRevision}
         onDelete={deleteSelected}
         onClone={cloneSelected}
+        {onConvertQRCode}
         onValueUpdated={controlValueUpdated} />
     </aside>
   </div>

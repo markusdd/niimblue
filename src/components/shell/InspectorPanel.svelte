@@ -5,13 +5,12 @@
   import { ArUcoMarker } from "$/fabric-object/aruco";
   import { Barcode } from "$/fabric-object/barcode";
   import { QRCode } from "$/fabric-object/qrcode";
-  import { MatrixCode } from "$/fabric-object/matrixcode";
+  import { isMatrixCode, type MatrixEncoding } from "$/fabric-object/matrixcode";
   import ArUcoParamsPanel from "$/components/designer-controls/ArUcoParamsControls.svelte";
   import BarcodeParamsPanel from "$/components/designer-controls/BarcodeParamsControls.svelte";
   import MatrixCodeParamsPanel from "$/components/designer-controls/MatrixCodeParamsControls.svelte";
   import GenericObjectParamsControls from "$/components/designer-controls/GenericObjectParamsControls.svelte";
   import LabelPropsEditor from "$/components/designer-controls/LabelPropsEditor.svelte";
-  import QrCodeParamsPanel from "$/components/designer-controls/QRCodeParamsControls.svelte";
   import TextParamsControls from "$/components/designer-controls/TextParamsControls.svelte";
   import VariableInsertControl from "$/components/designer-controls/VariableInsertControl.svelte";
   import VectorParamsControls from "$/components/designer-controls/VectorParamsControls.svelte";
@@ -34,6 +33,7 @@
     onDelete: () => void;
     onClone: () => void;
     onValueUpdated: () => void;
+    onConvertQRCode: (code: QRCode, encoding: MatrixEncoding) => Promise<void>;
   }
 
   let {
@@ -52,6 +52,7 @@
     onDelete,
     onClone,
     onValueUpdated,
+    onConvertQRCode,
   }: Props = $props();
 
   let tab = $state<"label" | "selection">("label");
@@ -116,12 +117,12 @@
       <TextParamsControls selectedText={selectedObject} {editRevision} valueUpdated={onValueUpdated} />
     {/if}
 
-    {#if selectedObject instanceof QRCode}
-      <QrCodeParamsPanel selectedQRCode={selectedObject} {editRevision} valueUpdated={onValueUpdated} />
-    {/if}
-
-    {#if selectedObject instanceof MatrixCode}
-      <MatrixCodeParamsPanel selectedMatrixCode={selectedObject} {editRevision} valueUpdated={onValueUpdated} />
+    {#if isMatrixCode(selectedObject) || selectedObject instanceof QRCode}
+      <MatrixCodeParamsPanel
+        selectedMatrixCode={selectedObject}
+        {editRevision}
+        valueUpdated={onValueUpdated}
+        {onConvertQRCode} />
     {/if}
 
     {#if selectedObject instanceof ArUcoMarker}
@@ -132,7 +133,7 @@
       <BarcodeParamsPanel selectedBarcode={selectedObject} {editRevision} valueUpdated={onValueUpdated} />
     {/if}
 
-    {#if selectedObject instanceof fabric.IText || selectedObject instanceof QRCode || selectedObject instanceof MatrixCode || (selectedObject instanceof Barcode && ["CODE128B", "CODE128", "CODE39"].includes(selectedObject.encoding))}
+    {#if selectedObject instanceof fabric.IText || selectedObject instanceof QRCode || isMatrixCode(selectedObject) || (selectedObject instanceof Barcode && ["CODE128B", "CODE128", "CODE39"].includes(selectedObject.encoding))}
       <VariableInsertControl {selectedObject} valueUpdated={onValueUpdated} />
     {/if}
   {/if}

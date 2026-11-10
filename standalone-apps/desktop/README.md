@@ -139,6 +139,8 @@ node tests/native_bluetooth.test.mjs
 node tests/bluetooth_response.test.mjs
 node tests/system_fonts.test.mjs
 node tests/code_formats.test.mjs
+node tests/matrixcode_inspector.test.mjs
+node tests/designer_code_selection.test.mjs
 npm run sv-check
 cargo test --manifest-path standalone-apps/desktop/src-tauri/Cargo.toml
 ```

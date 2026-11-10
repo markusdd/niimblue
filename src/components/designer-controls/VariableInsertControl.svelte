@@ -3,7 +3,7 @@
   import { tr } from "$/utils/i18n";
   import QRCode from "$/fabric-object/qrcode";
   import Barcode from "$/fabric-object/barcode";
-  import { MatrixCode } from "$/fabric-object/matrixcode";
+  import { isMatrixCode } from "$/fabric-object/matrixcode";
 
   interface Props {
     selectedObject: fabric.FabricObject;
@@ -25,7 +25,7 @@
       selectedObject.set({ text: `${selectedObject.text}${value}` });
     } else if (selectedObject instanceof Barcode) {
       selectedObject.set({ text: `${selectedObject.text}${value}` });
-    } else if (selectedObject instanceof MatrixCode) {
+    } else if (isMatrixCode(selectedObject)) {
       selectedObject.set({ text: `${selectedObject.text}${value}` });
     }
 

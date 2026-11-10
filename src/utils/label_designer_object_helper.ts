@@ -2,7 +2,7 @@ import * as fabric from "fabric";
 import { OBJECT_DEFAULTS, OBJECT_DEFAULTS_TEXT, OBJECT_DEFAULTS_VECTOR, OBJECT_SIZE_DEFAULTS } from "$/defaults";
 import { ArUcoMarker } from "$/fabric-object/aruco";
 import Barcode from "$/fabric-object/barcode";
-import { MatrixCode } from "$/fabric-object/matrixcode";
+import { MatrixCode, type MatrixEncoding } from "$/fabric-object/matrixcode";
 import { QRCode } from "$/fabric-object/qrcode";
 import type { OjectType } from "$/types";
 import { Toasts } from "$/utils/toasts";
@@ -224,8 +224,8 @@ export class LabelDesignerObjectHelper {
     return qr;
   }
 
-  static addMatrixCode(canvas: fabric.Canvas): MatrixCode {
-    const code = new MatrixCode({ ...OBJECT_DEFAULTS, text: "NiimBlue", encoding: "DATAMATRIX" });
+  static addMatrixCode(canvas: fabric.Canvas, encoding: MatrixEncoding = "QRCODE"): MatrixCode {
+    const code = new MatrixCode({ ...OBJECT_DEFAULTS, text: "NiimBlue", encoding });
     canvas.add(code);
     return code;
   }
@@ -250,7 +250,11 @@ export class LabelDesignerObjectHelper {
     return barcode;
   }
 
-  static addObject(canvas: fabric.Canvas, objType: OjectType): fabric.FabricObject | undefined {
+  static addObject(
+    canvas: fabric.Canvas,
+    objType: OjectType,
+    encoding?: MatrixEncoding,
+  ): fabric.FabricObject | undefined {
     switch (objType) {
       case "text":
         return this.addText(canvas);
@@ -266,7 +270,7 @@ export class LabelDesignerObjectHelper {
       case "qrcode":
         return this.addQrCode(canvas);
       case "matrixcode":
-        return this.addMatrixCode(canvas);
+        return this.addMatrixCode(canvas, encoding);
       case "aruco":
         return this.addArUco(canvas);
       case "barcode":

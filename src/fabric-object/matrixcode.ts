@@ -1,18 +1,27 @@
 import * as fabric from "fabric";
 import { CanvasUtils } from "$/utils/canvas_utils";
 import { encodeCode, drawCodeGeometry, type CodeGeometry } from "$/utils/code_encoder";
+import { qrCodeGeometry } from "$/utils/qrcode";
+import type { ErrorCorrectionLevel, Mode, QrVersion } from "$/fabric-object/qrcode";
 
-export type MatrixEncoding = "DATAMATRIX" | "AZTEC";
+export type MatrixEncoding = "QRCODE" | "DATAMATRIX" | "DATAMATRIX_RECT" | "MICROQR" | "AZTEC" | "PDF417";
+
+export function isRectangularMatrixEncoding(encoding: string): boolean {
+  return encoding === "PDF417" || encoding === "DATAMATRIX_RECT";
+}
 interface UniqueMatrixCodeProps {
   text: string;
   encoding: MatrixEncoding;
+  ecl: ErrorCorrectionLevel;
+  mode: Mode;
+  qrVersion: QrVersion;
 }
 export interface MatrixCodeProps extends fabric.FabricObjectProps, UniqueMatrixCodeProps {}
 export interface SerializedMatrixCodeProps extends fabric.SerializedObjectProps, UniqueMatrixCodeProps {}
-const MATRIX_PROPS = ["text", "encoding"] as const;
+const MATRIX_PROPS = ["text", "encoding", "ecl", "mode", "qrVersion"] as const;
 const QUIET_MODULES = 2;
 
-/** Editable Data Matrix/Aztec object. Encoding is cached independently of preview paint. */
+/** Editable 2D code. Encoding is cached independently of preview paint. */
 export class MatrixCode<
   Props extends fabric.TOptions<MatrixCodeProps> = Partial<MatrixCodeProps>,
   SProps extends SerializedMatrixCodeProps = SerializedMatrixCodeProps,
@@ -24,6 +33,9 @@ export class MatrixCode<
   static override readonly type = "MatrixCode";
   declare text: string;
   declare encoding: MatrixEncoding;
+  declare ecl: ErrorCorrectionLevel;
+  declare mode: Mode;
+  declare qrVersion: QrVersion;
   private encodedKey?: string;
   private geometry?: CodeGeometry;
   private encodingError?: string;
@@ -33,8 +45,18 @@ export class MatrixCode<
     Object.assign(this, {
       text: "NiimBlue",
       encoding: "DATAMATRIX",
-      width: 96,
-      height: 96,
+      ecl: "M",
+      mode: "Byte",
+      qrVersion: 0,
+      width:
+        options?.encoding === "PDF417"
+          ? 288
+          : options?.encoding === "DATAMATRIX_RECT"
+            ? 192
+            : options?.encoding === "MICROQR"
+              ? 64
+              : 96,
+      height: options?.encoding === "DATAMATRIX_RECT" || options?.encoding === "MICROQR" ? 64 : 96,
       fill: "#ffffff",
       stroke: "#000000",
       strokeWidth: 0,
@@ -46,25 +68,58 @@ export class MatrixCode<
 
   override _set(key: string, value: unknown): this {
     super._set(key, value);
-    if (key === "text" || key === "encoding") this.dirty = true;
+    if (MATRIX_PROPS.includes(key as (typeof MATRIX_PROPS)[number])) this.dirty = true;
     return this;
   }
 
   private getGeometry(): CodeGeometry | undefined {
-    const key = JSON.stringify([this.encoding, this.text]);
+    const key = JSON.stringify(
+      this.encoding === "QRCODE"
+        ? [this.encoding, this.text, this.ecl, this.mode, this.qrVersion]
+        : [this.encoding, this.text],
+    );
     if (key !== this.encodedKey) {
       this.encodedKey = key;
       this.geometry = undefined;
       this.encodingError = undefined;
       try {
-        if (this.encoding !== "DATAMATRIX" && this.encoding !== "AZTEC")
+        if (
+          this.encoding !== "QRCODE" &&
+          this.encoding !== "DATAMATRIX" &&
+          this.encoding !== "DATAMATRIX_RECT" &&
+          this.encoding !== "MICROQR" &&
+          this.encoding !== "AZTEC" &&
+          this.encoding !== "PDF417"
+        )
           throw new Error("Unsupported matrix encoding.");
-        this.geometry = encodeCode(this.encoding, this.text);
+        this.geometry =
+          this.encoding === "QRCODE"
+            ? qrCodeGeometry(this.text, this.ecl, this.mode, this.qrVersion)
+            : encodeCode(this.encoding, this.text);
       } catch (error) {
         this.encodingError = error instanceof Error ? error.message : String(error);
       }
     }
     return this.geometry;
+  }
+
+  setEncoding(encoding: MatrixEncoding): this {
+    const wasRectangular = isRectangularMatrixEncoding(this.encoding);
+    this.set("encoding", encoding);
+    if (isRectangularMatrixEncoding(encoding)) {
+      this.set({
+        width: Math.max(encoding === "PDF417" ? 288 : 192, this.width),
+        height: Math.max(encoding === "PDF417" ? 96 : 64, this.height),
+      });
+    } else if (wasRectangular) {
+      this.set("width", this.height);
+    }
+    if (encoding === "QRCODE") {
+      const size = Math.max(42, this.width);
+      this.set({ width: size, height: size });
+    }
+    this.setCoords();
+    return this;
   }
 
   getEncodingError(): string | undefined {
@@ -75,9 +130,8 @@ export class MatrixCode<
   }
 
   private moduleScale(geometry: CodeGeometry): number {
-    return Math.floor(
-      Math.min(this.width / (geometry.width + QUIET_MODULES * 2), this.height / (geometry.height + QUIET_MODULES * 2)),
-    );
+    const quiet = this.encoding === "QRCODE" ? 4 : QUIET_MODULES;
+    return Math.floor(Math.min(this.width / (geometry.width + quiet * 2), this.height / (geometry.height + quiet * 2)));
   }
 
   override _render(ctx: CanvasRenderingContext2D): void {
@@ -107,4 +161,10 @@ export class MatrixCode<
 }
 
 fabric.classRegistry.setClass(MatrixCode, "MatrixCode");
+
+/** Fabric objects can outlive their constructor during a dev-server hot update. */
+export function isMatrixCode(object: fabric.FabricObject | undefined): object is MatrixCode {
+  return object?.isType("MatrixCode") ?? false;
+}
+
 export default MatrixCode;

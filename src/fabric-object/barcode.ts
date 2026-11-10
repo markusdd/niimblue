@@ -2,10 +2,10 @@ import * as fabric from "fabric";
 import { code128b, ean13 } from "$/utils/barcode";
 import { CanvasUtils } from "$/utils/canvas_utils";
 import { OBJECT_DEFAULTS_TEXT } from "$/defaults";
-import { encodeCode, drawCodeGeometry, type CodeGeometry } from "$/utils/code_encoder";
+import { encodeCode, drawCodeGeometry, retailCodeText, type CodeGeometry } from "$/utils/code_encoder";
 
 const EAN13_LONG_BAR_INDEXES: Set<number> = new Set([0, 1, 2, 45, 46, 47, 48, 49, 92, 93, 94]);
-export type BarcodeCoding = "EAN13" | "CODE128B" | "CODE128" | "CODE39";
+export type BarcodeCoding = "EAN13" | "EAN8" | "UPCA" | "CODE128B" | "CODE128" | "CODE39";
 const QUIET_MODULES = 10;
 
 export const barcodeDefaultValues: Partial<fabric.TClassProperties<Barcode>> = {
@@ -145,8 +145,14 @@ export class Barcode<
       } else if (this.encoding === "CODE128B") {
         this.displayText = this.text;
         this.barcodeEncoded = code128b(this.text);
-      } else if (this.encoding === "CODE128" || this.encoding === "CODE39") {
-        this.displayText = this.text;
+      } else if (
+        this.encoding === "CODE128" ||
+        this.encoding === "CODE39" ||
+        this.encoding === "EAN8" ||
+        this.encoding === "UPCA"
+      ) {
+        this.displayText =
+          this.encoding === "EAN8" || this.encoding === "UPCA" ? retailCodeText(this.encoding, this.text) : this.text;
         this.librarySymbol = encodeCode(this.encoding, this.text);
       } else {
         throw new Error("Unsupported barcode encoding.");

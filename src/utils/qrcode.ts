@@ -1,4 +1,7 @@
 import { Utils } from "@mmote/niimbluelib";
+import QRCodeFactory from "qrcode-generator";
+import type { ErrorCorrectionLevel, Mode, QrVersion } from "$/fabric-object/qrcode";
+import type { CodeGeometry } from "$/utils/code_encoder";
 
 // copied from node_modules/qrcode-generator/dist/qrcode_UTF8.mjs (not sure how to import it from TS)
 export const toUTF8Array = (str: string): number[] => {
@@ -32,7 +35,7 @@ export const toUTF8Array = (str: string): number[] => {
 export const stringToBytes = (str: string): number[] => {
   if (str.startsWith("hex:")) {
     const input = str.slice(4).replaceAll(" ", "").toLowerCase();
-    
+
     if (input.length % 2 !== 0 || !/^[a-f0-9]+$/.test(input)) {
       throw new Error("Invalid hex input");
     }
@@ -43,3 +46,19 @@ export const stringToBytes = (str: string): number[] => {
 
   return toUTF8Array(str);
 };
+
+/** Use the existing QR encoder/settings within the common editable 2D object. */
+export function qrCodeGeometry(text: string, ecl: ErrorCorrectionLevel, mode: Mode, version: QrVersion): CodeGeometry {
+  if (!text) throw new Error("Enter content for the code.");
+  QRCodeFactory.stringToBytes = stringToBytes;
+  const qr = QRCodeFactory(version, ecl);
+  qr.addData(text, mode);
+  qr.make();
+  const size = qr.getModuleCount();
+  const geometry: CodeGeometry = { width: size, height: size, rectangles: [], regions: [] };
+  for (let row = 0; row < size; row++)
+    for (let col = 0; col < size; col++) {
+      if (qr.isDark(row, col)) geometry.rectangles.push({ x: col, y: row, width: 1, height: 1 });
+    }
+  return geometry;
+}

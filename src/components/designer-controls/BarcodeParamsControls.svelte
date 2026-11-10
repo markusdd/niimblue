@@ -9,6 +9,10 @@
   }
 
   let { selectedBarcode, editRevision, valueUpdated }: Props = $props();
+  let currentEncoding = $derived.by(() => {
+    void editRevision;
+    return selectedBarcode.encoding;
+  });
   let encodingError = $derived.by(() => {
     void editRevision;
     return selectedBarcode.getEncodingError?.();
@@ -22,12 +26,14 @@
   <select
     id="barcode-encoding"
     class="form-select form-select-sm"
-    value={selectedBarcode.encoding}
+    value={currentEncoding}
     onchange={(e) => {
       selectedBarcode?.set("encoding", e.currentTarget.value ?? "EAN13");
       valueUpdated();
     }}>
     <option value="EAN13">EAN13</option>
+    <option value="EAN8">EAN-8</option>
+    <option value="UPCA">UPC-A</option>
     <option value="CODE128B">Code128 B</option>
     <option value="CODE128">Code128 (auto)</option>
     <option value="CODE39">Code39</option>
@@ -87,6 +93,11 @@
       selectedBarcode?.set("text", e.currentTarget.value);
       valueUpdated();
     }}></textarea>
+  {#if currentEncoding === "EAN8"}
+    <small class="text-muted">{$tr("params.barcode.ean8_hint")}</small>
+  {:else if currentEncoding === "UPCA"}
+    <small class="text-muted">{$tr("params.barcode.upca_hint")}</small>
+  {/if}
 </div>
 
 <style>

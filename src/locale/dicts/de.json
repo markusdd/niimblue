@@ -1,4 +1,11 @@
 {
+    "params.matrixcode.microqr": "Micro QR",
+    "params.matrixcode.pdf417": "PDF417",
+    "params.matrixcode.datamatrix_rect": "Data Matrix (rechteckig)",
+    "params.matrixcode.size_px": "Größe (px)",
+    "params.matrixcode.microqr_hint": "Für kurze ASCII-Kennungen. Die Kapazität hängt von den verwendeten Zeichen ab. Den freien Rand um den Code beibehalten.",
+    "params.barcode.ean8_hint": "7 Ziffern eingeben, um die Prüfziffer zu berechnen, oder 8 Ziffern, um sie zu prüfen.",
+    "params.barcode.upca_hint": "11 Ziffern eingeben, um die Prüfziffer zu berechnen, oder 12 Ziffern, um sie zu prüfen.",
     "editor.objectpicker.matrixcode": "2D-Code",
     "params.matrixcode.encoding": "2D-Code-Typ",
     "params.matrixcode.datamatrix": "Data Matrix",

@@ -8,6 +8,7 @@ export class CodeRaster {
     this.transform = [1, 1, 0, 0];
     this.stack = [];
     this.paints = [];
+    this.texts = [];
   }
   save() { this.stack.push({ transform: [...this.transform], fillStyle: this.fillStyle }); }
   restore() { Object.assign(this, this.stack.pop()); }
@@ -55,7 +56,7 @@ export class CodeRaster {
     }
   }
   measureText() { return { width: 6 }; }
-  fillText() {} // Captions do not affect the symbol's decoded payload.
+  fillText(text) { this.texts.push(text); } // Captions do not affect the symbol's decoded payload.
 }
 
 export function rasterCode(object, draw = (callback) => callback()) {

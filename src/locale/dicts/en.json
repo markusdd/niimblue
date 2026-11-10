@@ -1,4 +1,11 @@
 {
+    "params.matrixcode.microqr": "Micro QR",
+    "params.matrixcode.pdf417": "PDF417",
+    "params.matrixcode.datamatrix_rect": "Data Matrix (rectangular)",
+    "params.matrixcode.size_px": "Size (px)",
+    "params.matrixcode.microqr_hint": "For short ASCII identifiers. Capacity depends on the characters used. Keep the clear margin around the code.",
+    "params.barcode.ean8_hint": "Enter 7 digits to calculate the check digit, or 8 digits to validate it.",
+    "params.barcode.upca_hint": "Enter 11 digits to calculate the check digit, or 12 digits to validate it.",
     "editor.objectpicker.matrixcode": "2D code",
     "params.matrixcode.encoding": "2D code type",
     "params.matrixcode.datamatrix": "Data Matrix",

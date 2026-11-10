@@ -1,17 +1,19 @@
 <script lang="ts">
   import { QRCode } from "$/fabric-object/qrcode";
+  import type { MatrixCode } from "$/fabric-object/matrixcode";
   import { tr } from "$/utils/i18n";
 
   interface Props {
-    selectedQRCode: QRCode;
+    selectedQRCode: QRCode | MatrixCode;
+    showContent?: boolean;
     editRevision: number;
     valueUpdated: () => void;
   }
 
-  let { selectedQRCode, editRevision, valueUpdated }: Props = $props();
+  let { selectedQRCode, editRevision, valueUpdated, showContent = true }: Props = $props();
 </script>
 
-<input type="hidden" value={editRevision}>
+<input type="hidden" value={editRevision} />
 
 <div class="field">
   <label class="field-label" for="qr-ecl">{$tr("params.qrcode.ecl")}</label>
@@ -64,17 +66,19 @@
   </select>
 </div>
 
-<div class="field">
-  <label class="field-label" for="qr-content">{$tr("params.barcode.content")}</label>
-  <textarea
-    id="qr-content"
-    class="qrcode-content form-control form-control-sm"
-    value={selectedQRCode.text}
-    oninput={(e) => {
-      selectedQRCode?.set("text", e.currentTarget.value);
-      valueUpdated();
-    }}></textarea>
-</div>
+{#if showContent}
+  <div class="field">
+    <label class="field-label" for="qr-content">{$tr("params.barcode.content")}</label>
+    <textarea
+      id="qr-content"
+      class="qrcode-content form-control form-control-sm"
+      value={selectedQRCode.text}
+      oninput={(e) => {
+        selectedQRCode?.set("text", e.currentTarget.value);
+        valueUpdated();
+      }}></textarea>
+  </div>
+{/if}
 
 <style>
   .qrcode-content {

@@ -4,7 +4,7 @@
   import { onDestroy } from "svelte";
   import QRCode from "$/fabric-object/qrcode";
   import Barcode from "$/fabric-object/barcode";
-  import { MatrixCode } from "$/fabric-object/matrixcode";
+  import { isMatrixCode } from "$/fabric-object/matrixcode";
 
   interface Props {
     selectedObject: fabric.FabricObject;
@@ -103,7 +103,7 @@
     <span class="input-group-text">{$tr("shell.pos.y")}</span>
     <input class="form-control" type="number" bind:value={y} onchange={updateObject} />
   </div>
-  {#if !(selectedObject instanceof fabric.FabricText || selectedObject instanceof fabric.FabricImage || selectedObject instanceof QRCode || selectedObject instanceof MatrixCode || selectedObject instanceof Barcode)}
+  {#if !(selectedObject instanceof fabric.FabricText || selectedObject instanceof fabric.FabricImage || selectedObject instanceof QRCode || isMatrixCode(selectedObject) || selectedObject instanceof Barcode)}
     <div class="input-group input-group-sm">
       <span class="input-group-text">{$tr("shell.pos.w")}</span>
       <input class="form-control" type="number" min="1" bind:value={width} onchange={updateObject} />
